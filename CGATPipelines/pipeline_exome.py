@@ -211,15 +211,13 @@ def getGATKOptions():
 @files(PARAMS["roi_bed"], "roi.load")
 def loadROI(infile, outfile):
     '''Import regions of interest bed file into SQLite.'''
-    scriptsdir = PARAMS["general_scriptsdir"]
     header = "chr,start,stop,feature"
     tablename = P.toTable(outfile)
+    load_statement = P.build_load_statement(
+		    tablename,
+		    options="%(csv2db_options)s --ignore-empty --header-names=%(header)s")
     statement = '''cat %(infile)s
-            | python %(scriptsdir)s/csv2db.py %(csv2db_options)s
-              --ignore-empty
-              --retry
-              --header-names=%(header)s
-              --table=%(tablename)s
+            | %(load_statement)s
             > %(outfile)s  '''
     P.run()
 
@@ -230,13 +228,12 @@ def loadROI(infile, outfile):
 @files(PARAMS["roi_to_gene"], "roi2gene.load")
 def loadROI2Gene(infile, outfile):
     '''Import genes mapping to regions of interest bed file into SQLite.'''
-    scriptsdir = PARAMS["general_scriptsdir"]
     tablename = P.toTable(outfile)
+    load_statement = P.build_load_statement(
+		    tablename,
+		    options="%(csv2db_options)s --ignore-empty")
     statement = '''cat %(infile)s
-            | python %(scriptsdir)s/csv2db.py %(csv2db_options)s
-              --ignore-empty
-              --retry
-              --table=%(tablename)s
+	    | %(load_statement)s
             > %(outfile)s  '''
     P.run()
 
@@ -247,13 +244,12 @@ def loadROI2Gene(infile, outfile):
 @files(PARAMS["samples"], "samples.load")
 def loadSamples(infile, outfile):
     '''Import sample information into SQLite.'''
-    scriptsdir = PARAMS["general_scriptsdir"]
     tablename = P.toTable(outfile)
+    load_statement = P.build_load_statement(
+		    tablename,
+		    options="%(csv2db_options)s --ignore-empty")
     statement = '''cat %(infile)s
-            | python %(scriptsdir)s/csv2db.py %(csv2db_options)s
-              --ignore-empty
-              --retry
-              --table=%(tablename)s
+            | %(load_statement)s
             > %(outfile)s  '''
     P.run()
 
@@ -1316,24 +1312,49 @@ def buildVCFstats(infile, outfile):
 @merge(buildVCFstats, "vcf_stats.load")
 def loadVCFstats(infiles, outfile):
     '''Import variant statistics into SQLite'''
+
     scriptsdir = PARAMS["general_scriptsdir"]
+
     filenames = " ".join(infiles)
-    tablename = P.toTable(outfile)
+
     E.info("Loading vcf stats...")
+
     statement = '''python %(scriptsdir)s/vcfstats2db.py %(filenames)s >>
                    %(outfile)s; '''
-    statement += '''cat vcfstats.txt | python %(scriptsdir)s/csv2db.py
-                    %(csv2db_options)s --allow-empty-file --add-index=track
-                    --table=vcf_stats >> %(outfile)s; '''
-    statement += '''cat sharedstats.txt | python %(scriptsdir)s/csv2db.py
-                    %(csv2db_options)s --allow-empty-file --add-index=track
-                    --table=vcf_shared_stats >> %(outfile)s; '''
-    statement += '''cat indelstats.txt | python %(scriptsdir)s/csv2db.py
-                    %(csv2db_options)s --allow-empty-file --add-index=track
-                    --table=indel_stats >> %(outfile)s; '''
-    statement += '''cat snpstats.txt | python %(scriptsdir)s/csv2db.py
-                    %(csv2db_options)s --allow-empty-file --add-index=track
-                    --table=snp_stats >> %(outfile)s; '''
+
+    db_options="%(csv2db_options)s --allow-empty-file --add-index=track"
+
+    load_statement = P.build_load_statement(
+		    tablename="vcf_stats"
+		    options=db_options)
+
+    statement += '''cat vcfstats.txt
+                    | %(load_statement)s
+                    >> %(outfile)s; '''
+
+    load_statement = P.build_load_statement(
+		    tablename="vcf_shared_stats",
+		    options=db_options)
+
+    statement += '''cat sharedstats.txt
+                    | %(load_statement)s
+                    >> %(outfile)s; '''
+
+    load_statement = P.build_load_statement(
+		    tablename="indel_stats",
+		    options=db_options)
+
+    statement += '''cat indelstats.txt
+                    | %(load_statement)s
+                    >> %(outfile)s; '''
+
+    load_statement = P.build_load_statement(
+		    tablename="snp_stats",
+		    options=db_options)
+
+    statement += '''cat snpstats.txt
+                    | %(load_statement)s
+                    >> %(outfile)s; '''
     P.run()
 
 ###############################################################################
