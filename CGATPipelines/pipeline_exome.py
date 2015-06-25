@@ -211,11 +211,15 @@ def getGATKOptions():
 @files(PARAMS["roi_bed"], "roi.load")
 def loadROI(infile, outfile):
     '''Import regions of interest bed file into SQLite.'''
+
     header = "chr,start,stop,feature"
+
     tablename = P.toTable(outfile)
+
     load_statement = P.build_load_statement(
-		    tablename,
-		    options="%(csv2db_options)s --ignore-empty --header-names=%(header)s")
+        tablename,
+        options="%(csv2db_options)s --ignore-empty --header-names=%(header)s")
+
     statement = '''cat %(infile)s
             | %(load_statement)s
             > %(outfile)s  '''
@@ -228,13 +232,16 @@ def loadROI(infile, outfile):
 @files(PARAMS["roi_to_gene"], "roi2gene.load")
 def loadROI2Gene(infile, outfile):
     '''Import genes mapping to regions of interest bed file into SQLite.'''
+
     tablename = P.toTable(outfile)
+
     load_statement = P.build_load_statement(
-		    tablename,
-		    options="%(csv2db_options)s --ignore-empty")
+        tablename,
+        options="%(csv2db_options)s --ignore-empty")
+
     statement = '''cat %(infile)s
-	    | %(load_statement)s
-            > %(outfile)s  '''
+                | %(load_statement)s
+                > %(outfile)s  '''
     P.run()
 
 ###############################################################################
@@ -244,13 +251,16 @@ def loadROI2Gene(infile, outfile):
 @files(PARAMS["samples"], "samples.load")
 def loadSamples(infile, outfile):
     '''Import sample information into SQLite.'''
+
     tablename = P.toTable(outfile)
+
     load_statement = P.build_load_statement(
-		    tablename,
-		    options="%(csv2db_options)s --ignore-empty")
+        tablename,
+        options="%(csv2db_options)s --ignore-empty")
+
     statement = '''cat %(infile)s
-            | %(load_statement)s
-            > %(outfile)s  '''
+                | %(load_statement)s
+                > %(outfile)s  '''
     P.run()
 
 ###############################################################################
@@ -1322,39 +1332,39 @@ def loadVCFstats(infiles, outfile):
     statement = '''python %(scriptsdir)s/vcfstats2db.py %(filenames)s >>
                    %(outfile)s; '''
 
-    db_options="%(csv2db_options)s --allow-empty-file --add-index=track"
+    db_options = "%(csv2db_options)s --allow-empty-file --add-index=track"
 
     load_statement = P.build_load_statement(
-		    tablename="vcf_stats"
-		    options=db_options)
+        tablename="vcf_stats",
+        options=db_options)
 
     statement += '''cat vcfstats.txt
-                    | %(load_statement)s
-                    >> %(outfile)s; '''
+                | %(load_statement)s
+                >> %(outfile)s; '''
 
     load_statement = P.build_load_statement(
-		    tablename="vcf_shared_stats",
-		    options=db_options)
+        tablename="vcf_shared_stats",
+        options=db_options)
 
     statement += '''cat sharedstats.txt
-                    | %(load_statement)s
-                    >> %(outfile)s; '''
+                | %(load_statement)s
+                >> %(outfile)s; '''
 
     load_statement = P.build_load_statement(
-		    tablename="indel_stats",
-		    options=db_options)
+        tablename="indel_stats",
+        options=db_options)
 
     statement += '''cat indelstats.txt
-                    | %(load_statement)s
-                    >> %(outfile)s; '''
+                | %(load_statement)s
+                >> %(outfile)s; '''
 
     load_statement = P.build_load_statement(
-		    tablename="snp_stats",
-		    options=db_options)
+        tablename="snp_stats",
+        options=db_options)
 
     statement += '''cat snpstats.txt
-                    | %(load_statement)s
-                    >> %(outfile)s; '''
+                | %(load_statement)s
+                >> %(outfile)s; '''
     P.run()
 
 ###############################################################################
