@@ -2389,7 +2389,7 @@ def main(args=sys.argv):
                       type="choice",
                       choices=(
                           "make", "show", "plot", "dump", "config", "clone",
-                          "check", "regenerate"),
+                          "check", "regenerate", "printconfig"),
                       help="action to take [default=%default].")
 
     parser.add_option("--pipeline-format", dest="pipeline_format",
@@ -2704,9 +2704,11 @@ def main(args=sys.argv):
 
     elif options.pipeline_action == "dump":
         # convert to normal dictionary (not defaultdict) for parsing purposes
-	#print "dump = %s" % str(dict(PARAMS))
-	print "Printing out pipeline parameters: "
-	for k in sorted(PARAMS):
+        print "dump = %s" % str(dict(PARAMS))
+
+    elif options.pipeline_actions == "printconfig":
+        print "Printing out pipeline parameters: "
+        for k in sorted(PARAMS):
             print k, "=", PARAMS[k]
 
     elif options.pipeline_action == "config":
