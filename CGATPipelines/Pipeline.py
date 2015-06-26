@@ -1398,7 +1398,7 @@ def run(**kwargs):
     job_memory = None
 
     if 'job_memory' in options:
-        job_memory = PARAMS.get("cluster_memory_default", "2G")
+        job_memory = options['job_memory']
 
     elif "mem_free" in options["cluster_options"] and \
          PARAMS.get("cluster_memory_resource", False):
@@ -1677,7 +1677,9 @@ def submit(module, function, params=None,
            infiles=None, outfiles=None,
            to_cluster=True,
            logfile=None,
-           job_options=""):
+           job_options="",
+           job_threads=1,
+           job_memory=False):
     '''submit a python *function* as a job to the cluster.
 
     The function should reside in *module*. If *module* is
@@ -1687,6 +1689,9 @@ def submit(module, function, params=None,
     input/output filenames. Neither options supports yet nested lists.
 
     '''
+
+    if not job_memory:
+        job_memory = PARAMS.get("cluster_memory_default", "2G")
 
     if type(infiles) in (list, tuple):
         infiles = " ".join(["--input=%s" % x for x in infiles])
@@ -2736,7 +2741,9 @@ def _pickle_args(args, kwargs):
         use_args = ["to_cluster",
                     "logfile",
                     "job_options",
-                    "job_queue"]
+                    "job_queue",
+                    "job_threads",
+                    "job_memory"]
 
         submit_args = {}
 
