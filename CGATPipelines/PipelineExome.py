@@ -162,7 +162,8 @@ def haplotypeCaller(infile, outfile, genome,
                     dbsnp, intervals, padding, options):
     '''Call SNVs and indels using GATK HaplotypeCaller in all members of a
     family together'''
-    job_options = getGATKOptions()
+    #job_options = getGATKOptions()
+    job_memory = "8G"
     job_threads = 3
 
     statement = '''GenomeAnalysisTK

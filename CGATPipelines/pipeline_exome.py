@@ -544,7 +544,7 @@ def loadXYRatio(infile, outfile):
 def haplotypeCaller(infile, outfile):
     '''Call SNVs and indels using GATK HaplotypeCaller in individuals'''
     genome = PARAMS["bwa_index_dir"] + "/" + PARAMS["genome"] + ".fa"
-    job_memory = PARAMS["job_memory"]
+    job_memory = PARAMS["gatk_memory"]
     job_threads = PARAMS["gatk_threads"]
     dbsnp = PARAMS["gatk_dbsnp"]
     intervals = PARAMS["roi_intervals"]
