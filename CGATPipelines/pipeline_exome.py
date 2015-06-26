@@ -196,9 +196,6 @@ INPUT_FORMATS = ("*.fastq.1.gz", "*.fastq.gz", "*.sra", "*.csfasta.gz")
 REGEX_FORMATS = regex(r"(\S+).(fastq.1.gz|fastq.gz|sra|csfasta.gz)")
 
 
-def getGATKOptions():
-    return "-l mem_free=1.4G"
-
 ###############################################################################
 ###############################################################################
 ###############################################################################
@@ -274,7 +271,7 @@ def loadSamples(infile, outfile):
 def mapReads(infiles, outfile):
     '''Map reads to the genome using BWA-MEM (output=SAM), convert to BAM,
     sort and index BAM file'''
-    job_options = "-l mem_free=8G"
+    job_memory = PARAMS["bwa_memory"]
     job_threads = PARAMS["bwa_threads"]
     track = P.snip(os.path.basename(outfile), ".bam")
     m = PipelineMapping.BWAMEM(remove_unique=PARAMS["bwa_remove_non_unique"])
@@ -321,7 +318,7 @@ def GATKReadGroups(infile, outfile):
 
     track = re.sub(r'-\w+-\w+\.bam', '', os.path.basename(infile))
     tmpdir_gatk = P.getTempDir('.')
-    job_options = getGATKOptions()
+    job_memory = PARAMS["job_memory"]
     job_threads = PARAMS["gatk_threads"]
     library = PARAMS["readgroup_library"]
     platform = PARAMS["readgroup_platform"]
@@ -547,7 +544,7 @@ def loadXYRatio(infile, outfile):
 def haplotypeCaller(infile, outfile):
     '''Call SNVs and indels using GATK HaplotypeCaller in individuals'''
     genome = PARAMS["bwa_index_dir"] + "/" + PARAMS["genome"] + ".fa"
-    job_options = getGATKOptions()
+    job_memory = PARAMS["job_memory"]
     job_threads = PARAMS["gatk_threads"]
     dbsnp = PARAMS["gatk_dbsnp"]
     intervals = PARAMS["roi_intervals"]
@@ -685,7 +682,7 @@ def loadNDR(infile, outfile):
            r"variants/all_samples.snpeff.vcf")
 def annotateVariantsSNPeff(infile, outfile):
     '''Annotate variants using SNPeff'''
-    job_options = "-l mem_free=6G"
+    job_memory = PARAMS["annotation_memory"]
     job_threads = PARAMS["annotation_threads"]
     snpeff_genome = PARAMS["annotation_snpeff_genome"]
     config = PARAMS["annotation_snpeff_config"]
@@ -757,7 +754,7 @@ def variantRecalibratorSnps(infile, outfile):
     '''Create variant recalibration file'''
     genome = PARAMS["bwa_index_dir"] + "/" + PARAMS["genome"] + ".fa"
     dbsnp = PARAMS["gatk_dbsnp"]
-    job_options = getGATKOptions()
+    job_memory = PARAMS["job_memory"]
     job_threads = PARAMS["gatk_threads"]
     track = P.snip(outfile, ".recal")
     kgenomes = PARAMS["gatk_kgenomes"]
@@ -794,7 +791,7 @@ def applyVariantRecalibrationSnps(infiles, outfile):
 def variantRecalibratorIndels(infile, outfile):
     '''Create variant recalibration file'''
     genome = PARAMS["bwa_index_dir"] + "/" + PARAMS["genome"] + ".fa"
-    job_options = getGATKOptions()
+    job_memory = PARAMS["job_memory"]
     job_threads = PARAMS["gatk_threads"]
     track = P.snip(outfile, ".recal")
     mills = PARAMS["gatk_mills"]
@@ -830,7 +827,7 @@ def applyVariantRecalibrationIndels(infiles, outfile):
            r"variants/all_samples.snpsift.vcf")
 def annotateVariantsSNPsift(infile, outfile):
     '''Add annotations using SNPsift'''
-    job_options = "-l mem_free=6G"
+    job_memory = PARAMS["annotation_memory"]
     job_threads = PARAMS["annotation_threads"]
     track = P.snip(os.path.basename(infile), ".vqsr.vcf")
     dbNSFP = PARAMS["annotation_snpsift_dbnsfp"]
@@ -1004,7 +1001,7 @@ def confirmParentage(infiles, outfile):
            r"variants/\1.filtered.vcf")
 def deNovoVariants(infiles, outfile):
     '''Filter de novo variants based on provided jexl expression'''
-    job_options = getGATKOptions()
+    job_memory = PARAMS["job_memory"]
     genome = PARAMS["bwa_index_dir"] + "/" + PARAMS["genome"] + ".fa"
     pedfile, infile = infiles
     pedigree = csv.DictReader(
@@ -1253,7 +1250,7 @@ def phasing(infiles, outfile):
            r"variants/all_samples.rbp.vcf")
 def readbackedphasing(infiles, outfile):
     '''phase variants with ReadBackedPhasing'''
-    job_options = getGATKOptions()
+    job_memory = PARAMS["job_memory"]
     infile, bamlist = infiles
     genome = PARAMS["bwa_index_dir"] + "/" + PARAMS["genome"] + ".fa"
     statement = '''GenomeAnalysisTK -T ReadBackedPhasing

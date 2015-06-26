@@ -2706,7 +2706,7 @@ def main(args=sys.argv):
         # convert to normal dictionary (not defaultdict) for parsing purposes
         print "dump = %s" % str(dict(PARAMS))
 
-    elif options.pipeline_actions == "printconfig":
+    elif options.pipeline_action == "printconfig":
         print "Printing out pipeline parameters: "
         for k in sorted(PARAMS):
             print k, "=", PARAMS[k]
