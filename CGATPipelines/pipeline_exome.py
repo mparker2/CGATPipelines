@@ -401,7 +401,7 @@ def mergeBAMs(infiles, outfile):
     outf = open(outfile + ".count", "w")
     outf.write(str(len(infiles)))
     outf.close()
-    job_memory=PARAMS["job_memory"]
+    job_memory = PARAMS["job_memory"]
     statement = '''MergeSamFiles
                    INPUT=%(inputfiles)s
                    OUTPUT=%(outfile)s
