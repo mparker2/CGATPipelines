@@ -288,6 +288,7 @@ def mapReads(infiles, outfile):
 def PicardAlignStats(infile, outfile):
     '''Run Picard CollectMultipleMetrics on each BAM file'''
     genome = PARAMS["bwa_index_dir"] + "/" + PARAMS["genome"] + ".fa"
+    job_memory = PARAMS["job_memory"]
     PipelineMappingQC.buildPicardAlignmentStats(infile, outfile, genome)
 
 ###############################################################################
@@ -400,6 +401,7 @@ def mergeBAMs(infiles, outfile):
     outf = open(outfile + ".count", "w")
     outf.write(str(len(infiles)))
     outf.close()
+    job_memory=PARAMS["job_memory"]
     statement = '''MergeSamFiles
                    INPUT=%(inputfiles)s
                    OUTPUT=%(outfile)s
@@ -1001,7 +1003,7 @@ def confirmParentage(infiles, outfile):
            r"variants/\1.filtered.vcf")
 def deNovoVariants(infiles, outfile):
     '''Filter de novo variants based on provided jexl expression'''
-    job_memory = PARAMS["job_memory"]
+    job_memory = PARAMS["gatk_memory"]
     genome = PARAMS["bwa_index_dir"] + "/" + PARAMS["genome"] + ".fa"
     pedfile, infile = infiles
     pedigree = csv.DictReader(
@@ -1157,6 +1159,7 @@ def loadDoms(infile, outfile):
            r"variants/\1.recessive.vcf")
 def recessiveVariants(infiles, outfile):
     '''Filter variants according to autosomal recessive disease model'''
+    job_memory = PARAMS["gatk_memory"]
     genome = PARAMS["bwa_index_dir"] + "/" + PARAMS["genome"] + ".fa"
     pedfile, infile = infiles
     pedigree = csv.DictReader(open(pedfile), delimiter='\t',
@@ -1234,6 +1237,7 @@ def phasing(infiles, outfile):
     '''phase variants with GATK'''
     infile, pedfile, bamlist = infiles
     genome = PARAMS["bwa_index_dir"] + "/" + PARAMS["genome"] + ".fa"
+    job_memory = PARAMS["job_memory"]
     statement = '''GenomeAnalysisTK -T PhaseByTransmission
                    -R %(genome)s
                    -V %(infile)s
