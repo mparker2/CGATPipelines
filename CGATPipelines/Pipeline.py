@@ -1454,8 +1454,7 @@ def run(**kwargs):
 
         return jt
 
-    # SLV: create separate shell.log per job
-    #shellfile = os.path.join(os.getcwd(), "shell.log")
+    shellfile = os.path.join(os.getcwd(), "shell.log")
 
     pid = os.getpid()
     L.debug('task: pid = %i' % pid)
@@ -1481,9 +1480,6 @@ def run(**kwargs):
         "[:]", "_",
         os.path.basename(options.get("outfile", "ruffus")))
     
-    # SLV: create separate shell.log per job
-    shellfile = os.path.join(os.getcwd(), "shell.%s" % job_name)
-
     def buildJobScript(statement, job_memory, job_name):
         '''build job script from statement.
 

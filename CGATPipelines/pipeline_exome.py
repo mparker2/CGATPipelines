@@ -319,7 +319,7 @@ def GATKReadGroups(infile, outfile):
 
     track = re.sub(r'-\w+-\w+\.bam', '', os.path.basename(infile))
     tmpdir_gatk = P.getTempDir('.')
-    job_memory = PARAMS["job_memory"]
+    job_memory = PARAMS["gatk_memory"]
     job_threads = PARAMS["gatk_threads"]
     library = PARAMS["readgroup_library"]
     platform = PARAMS["readgroup_platform"]
