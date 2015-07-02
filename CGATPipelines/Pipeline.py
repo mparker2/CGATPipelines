@@ -1454,7 +1454,8 @@ def run(**kwargs):
 
         return jt
 
-    shellfile = os.path.join(os.getcwd(), "shell.log")
+    # SLV: create separate shell.log per job
+    #shellfile = os.path.join(os.getcwd(), "shell.log")
 
     pid = os.getpid()
     L.debug('task: pid = %i' % pid)
@@ -1479,6 +1480,9 @@ def run(**kwargs):
     job_name = re.sub(
         "[:]", "_",
         os.path.basename(options.get("outfile", "ruffus")))
+    
+    # SLV: create separate shell.log per job
+    shellfile = os.path.join(os.getcwd(), "shell.%s" % job_name)
 
     def buildJobScript(statement, job_memory, job_name):
         '''build job script from statement.
@@ -1503,6 +1507,8 @@ def run(**kwargs):
         tmpfile.write("hostname | sed 's/^/%s: /' &>> %s\n" %
                       (job_name, shellfile))
         tmpfile.write("cat /proc/meminfo | sed 's/^/%s: /' &>> %s\n" %
+                      (job_name, shellfile))
+        tmpfile.write("free -g | sed 's/^/%s: /' &>> %s\n" %
                       (job_name, shellfile))
         tmpfile.write(
             'echo "%s : END -> %s" >> %s\n' %
