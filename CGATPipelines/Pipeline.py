@@ -172,7 +172,9 @@ HARDCODED_PARAMS = {
     # directory used for temporary files shared across machines
     'shared_tmpdir': os.environ.get("SHARED_TMPDIR", "/ifs/scratch"),
     # cluster queue to use
-    'cluster_queue': 'all.q',
+    # SLV: test
+    #'cluster_queue': 'all.q',
+    'cluster_queue': 'testqueue.q',
     # priority of jobs in cluster queue
     'cluster_priority': -10,
     # number of jobs to submit to cluster queue
@@ -1449,6 +1451,7 @@ def run(**kwargs):
                 "-pe %(cluster_parallel_environment)s %(job_threads)i -R y")
 
         jt.nativeSpecification = " ".join(spec) % options
+	L.debug("qsub is: " + " ".join(spec) % options)
         # keep stdout and stderr separate
         jt.joinFiles = False
 
