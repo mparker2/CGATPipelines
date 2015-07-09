@@ -1282,7 +1282,6 @@ def compoundHets(infiles, outfile):
                    gemini comp_hets
                    --families %(family_id)s
                    --columns "chrom, start, end, ref, alt, codon_change, gene, qual, depth"
-                   --only-affected
                    --filter
                    "(impact_severity = 'HIGH' OR impact_severity = 'MED')
                    AND (in_esp = 0 OR aaf_esp_all < 0.01)
