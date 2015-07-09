@@ -172,9 +172,7 @@ HARDCODED_PARAMS = {
     # directory used for temporary files shared across machines
     'shared_tmpdir': os.environ.get("SHARED_TMPDIR", "/ifs/scratch"),
     # cluster queue to use
-    # SLV: test
-    #'cluster_queue': 'all.q',
-    'cluster_queue': 'testqueue.q',
+    'cluster_queue': 'all.q',
     # priority of jobs in cluster queue
     'cluster_priority': -10,
     # number of jobs to submit to cluster queue
