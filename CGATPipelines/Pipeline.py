@@ -840,10 +840,10 @@ def concatenateAndLoad(infiles,
     infiles = " ".join(infiles)
 
     passed_options = options
-    load_options, options = ["--add-index=track"], []
+    load_options, cat_options = ["--add-index=track"], []
 
     if regex_filename:
-        options.append("--regex-filename='%s'" % regex_filename)
+        cat_options.append("--regex-filename='%s'" % regex_filename)
 
     if header:
         load_options.append("--header-names=%s" % header)
@@ -851,22 +851,20 @@ def concatenateAndLoad(infiles,
     if not cat:
         cat = "track"
 
-    if has_titles is False:
-        no_titles = "--no-titles"
-    else:
-        no_titles = ""
+    if not has_titles:
+        cat_options.append("--no-titles")
 
-    options = " ".join(options + load_options) + " " + passed_options
+    cat_options = " ".join(cat_options)
+    load_options = " ".join(load_options) + " " + passed_options
 
     load_statement = build_load_statement(toTable(outfile),
-                                          options=options,
+                                          options=load_options,
                                           retry=retry)
 
     statement = '''python %(scriptsdir)s/combine_tables.py
     --cat=%(cat)s
     --missing-value=%(missing_value)s
-    %(no_titles)s
-    %(options)s
+    %(cat_options)s
     %(infiles)s
     | %(load_statement)s
     > %(outfile)s'''
@@ -1516,8 +1514,7 @@ def run(**kwargs):
         # such as v_hmem.
         # Note that limiting resident set sizes (RSS) with ulimit is not
         # possible in newer kernels.
-        #tmpfile.write("ulimit -v %i\n" % IOTools.human2bytes(job_memory))
-        # tmpfile.write("ulimit -v %i\n" % IOTools.human2bytes(job_memory))
+        tmpfile.write("ulimit -v %i\n" % IOTools.human2bytes(job_memory))
 
         tmpfile.write(
             expandStatement(
@@ -1858,7 +1855,8 @@ def peekParameters(workingdir,
                    pipeline,
                    on_error_raise=None,
                    prefix=None,
-                   update_interface=False):
+                   update_interface=False,
+                   restrict_interface=False):
     '''peek configuration parameters from a *pipeline*
     in *workingdir*.
 
@@ -1873,7 +1871,9 @@ def peekParameters(workingdir,
     If *prefix* is set, all parameters will be prefixed by *prefix*.
 
     If *update_interface* is True, this method will also prefix any
-    options in the ``[interface]`` section with *wordinkdir*.
+    options in the ``[interface]`` section with *wordingdir*. If
+    *restrict_interface* is set, only interface parameters will be
+    output.
 
     If *on_error_raise* is set to a boolean, an error will be raised
     (or not) if there is an error during parameter peeking, for
@@ -1968,6 +1968,11 @@ def peekParameters(workingdir,
         for key, value in dump.items():
             if key.startswith("interface"):
                 dump[key] = os.path.join(workingdir, value)
+
+    # keep only interface if so required
+    if restrict_interface:
+        dump = dict([(k, v) for k, v in dump.iteritems()
+                     if k.startswith("interface")])
 
     # prefix all parameters
     if prefix is not None:
@@ -2114,7 +2119,7 @@ def run_report(clean=True,
     else:
         erase_return = ""
 
-    # in the latest, xvfb always returns with an error, thus
+    # in the current version, xvfb always returns with an error, thus
     # ignore these.
     erase_return = "|| true"
 
@@ -2123,10 +2128,16 @@ def run_report(clean=True,
     else:
         clean = ""
 
+    # with sphinx >1.3.1 the PYTHONPATH needs to be set explicitely as
+    # the virtual environment seems to be stripped. It is thus set to
+    # the contents of the current sys.path
+    syspath = ":".join(sys.path)
+
     statement = '''
     %(clean)s
     (export SPHINX_DOCSDIR=%(docdir)s;
     export SPHINX_THEMEDIR=%(themedir)s;
+    export PYTHONPATH=%(syspath)s;
     %(xvfb_command)s
     %(report_engine)s-build
            --num-jobs=%(report_threads)s
