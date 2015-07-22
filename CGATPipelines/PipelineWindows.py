@@ -447,10 +447,11 @@ def runDE(infiles, outfile, outdir,
     '''run DESeq or EdgeR.
 
     The job is split into smaller sections. The order of the input
-    data is randomized in order to avoid any biases due to chromosomes and
-    break up local correlations.
+    data is randomized in order to avoid any biases due to chromosomes
+    and break up local correlations.
 
     At the end, a new q-value is computed from all results.
+
     '''
 
     design_file, counts_file = infiles
@@ -480,7 +481,7 @@ def runDE(infiles, outfile, outdir,
     --input-header
     --output-header
     --split-at-lines=200000
-    --cluster-options="-l mem_free=8G"
+    --cluster-options="-l mem_free=16G"
     --log=%(outfile)s.log
     --output-filename-pattern=%(outdir)s/%%s
     --subdirs
@@ -879,11 +880,9 @@ def buildSpikeResults(infile, outfile):
     tablename = P.toTable(
         P.snip(outfile, "power.gz") + method + ".spike.load")
 
-    statement = '''cat %(tmpfile_name)s
-    | python %(scriptsdir)s/csv2db.py
-           --table=%(tablename)s
-           --add-index=fdr
-    > %(outfile)s.log'''
+    P.load(tmpfile_name,
+           outfile + ".log",
+           tablename=tablename,
+           options="--add-index=fdr")
 
-    P.run()
     os.unlink(tmpfile_name)
