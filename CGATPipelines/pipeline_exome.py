@@ -679,48 +679,18 @@ def loadNDR(infile, outfile):
            r"variants/all_samples.snpeff.vcf")
 def annotateVariantsSNPeff(infile, outfile):
     '''Annotate variants using SNPeff'''
-
-    job_options = "-l job_memory=6G"
+    '''Annotate variants using SNPeff'''
+    job_options = "-l mem_free=6G"
     job_threads = 4
-    tempin = P.getTempFilename()
-    tempout = P.getTempFilename()
-    genome = PARAMS["bwa_index_dir"] + "/" + PARAMS["genome"] + ".fa"
-
-    SNPsift = PARAMS["annotations_SNPsiftannotators"].split(",")
-    VEP = PARAMS["annotations_vepannotators"].split(",")
-    custom = PARAMS["annotations_customanno"]
-    statement = """cp %(infile)s %(tempin)s"""
+    snpeff_genome = PARAMS["annotation_snpeff_genome"]
+    config = PARAMS["annotation_snpeff_config"]
+    statement = '''/ifs/apps/bio/snpEff-3.3-dev/snpEff.sh eff
+                    -c %(config)s
+                    -v %(snpeff_genome)s
+                    -o gatk %(infile)s > %(outfile)s''' % locals()
     P.run()
 
-    # SNPsift #
-    if "dbNSFP" in SNPsift:
-        dbNSFP = PARAMS["annotations_dbnsfp"]
-        dbN_annotators = PARAMS["annotations_dbNSRPannotators"]
-        if len(dbN_annotators) == 0:
-            annostring = ""
-        else:
-            annostring = "-f %s" % (" ").join(dbN_annotators).split(",")
-        statement = """SNPSift.sh dbnsfp -db %(dbNSFP)s -v %(tempin)s
-                       %(annostring)s > 
-                       %(tempout)s;
-                       mv %(tempout)s %(tempin)s"""
-        P.run()
 
-    if "gwascatalog" in SNPsift:
-        gwas_catalog = PARAMS["annotations_gwas_catalog"]
-        statement = """SNPSift.sh gwasCat %(gwas_catalog)s
-                       %(tempin)s > %(tempout)s;
-                       mv %(tempout)s %(tempin)s"""
-        P.run()
-
-    if "phastcons" in SNPsift:
-        genomeind = "%s.fai" % genome
-        phastcons = PARAMS["annotations_phastcons"]
-        statement = """cp %(genomeind)s %(phastcons)s/genome.fai;
-                       SNPSift.sh phastCons %(phastcons)s %(tempin)s >
-                       %(tempout)s;
-                       mv %(tempout)s %(tempin)s"""
-        P.run()
 
 ###############################################################################
 
@@ -857,85 +827,100 @@ def applyVariantRecalibrationIndels(infiles, outfile):
            r"variants/all_samples.snpsift.vcf")
 def annotateVariantsSNPsift(infile, outfile):
     '''Add annotations using SNPsift'''
-    job_options = "-l job_memory=6G"
+    job_options = "-l mem_free=6G"
     job_threads = 4
-    tempin = P.getTempFilename()
-    tempout = P.getTempFilename()
+    tempin = P.getTempFilename(".")
+    tempout = P.getTempFilename(".")
     genome = PARAMS["bwa_index_dir"] + "/" + PARAMS["genome"] + ".fa"
-
-    SNPsift = PARAMS["annotations_SNPsiftannotators"].split(",")
-    VEP = PARAMS["annotations_vepannotators"].split(",")
-    custom = PARAMS["annotations_customanno"]
-    statement = """cp %(infile)s %(tempin)s"""
-    P.run()
+    SNPsift = PARAMS["annotation_snpsiftannotators"].split(",")
+    VEP = PARAMS["annotation_vepannotators"].split(",")
+    custom = PARAMS["annotation_customanno"]
+    shutil.copy(infile, tempin)
 
     # SNPsift #
-    if "dbNSFP" in SNPsift:
-        dbNSFP = PARAMS["annotations_dbnsfp"]
-        dbN_annotators = PARAMS["annotations_dbNSRPannotators"]
-        if len(dbN_annotators) == 0:
-            annostring = ""
-        else:
-            annostring = "-f %s" % (" ").join(dbN_annotators).split(",")
-        statement = """SNPSift.sh dbnsfp -db %(dbNSFP)s -v %(tempin)s
-                       %(annostring)s > 
-                       %(tempout)s;
-                       mv %(tempout)s %(tempin)s"""
-        P.run()
+    # if "dbNSFP" in SNPsift:
+    #     dbNSFP = PARAMS["annotation_dbnsfp"]
+    #     dbN_annotators = PARAMS["annotation_dbnsfpannotators"]
+    #     if len(dbN_annotators) == 0:
+    #         annostring = ""
+    #     else:
+    #         annostring = "-f %s" % dbN_annotators
+    #     statement = """SnpSift.sh dbnsfp -db %(dbNSFP)s -v %(tempin)s
+    #                    %(annostring)s >
+    #                    %(tempout)s;
+    #                    cp %(tempout)s variants/dpnsfp.vcf;
+    #                    mv %(tempout)s %(tempin)s"""
+    #     P.run()
 
-    if "gwascatalog" in SNPsift:
-        gwas_catalog = PARAMS["annotations_gwas_catalog"]
-        statement = """SNPSift.sh gwasCat %(gwas_catalog)s
-                       %(tempin)s > %(tempout)s;
-                       mv %(tempout)s %(tempin)s"""
-        P.run()
+    # if "gwascatalog" in SNPsift:
+    #     gwas_catalog = PARAMS["annotation_gwas_catalog"]
+    #     statement = """SnpSift.sh gwasCat -db %(gwas_catalog)s
+    #                    %(tempin)s > %(tempout)s;
+    #                    cp %(tempout)s variants/gwascat.vcf;
+    #                    mv %(tempout)s %(tempin)s"""
+    #     P.run()
 
-    if "phastcons" in SNPsift:
-        genomeind = "%s.fai" % genome
-        phastcons = PARAMS["annotations_phastcons"]
-        statement = """cp %(genomeind)s %(phastcons)s/genome.fai;
-                       SNPSift.sh phastCons %(phastcons)s %(tempin)s >
-                       %(tempout)s;
-                       mv %(tempout)s %(tempin)s"""
-        P.run()
+    # if "phastcons" in SNPsift:
+    #     genomeind = "%s.fai" % genome
+    #     phastcons = PARAMS["annotation_phastcons"]
+    #     statement = """cp %(genomeind)s %(phastcons)s/genome.fai;
+    #                    SnpSift.sh phastCons %(phastcons)s %(tempin)s >
+    #                    %(tempout)s;
+    #                    cp %(tempout)s variants/phascons.vcf;
+    #                    mv %(tempout)s %(tempin)s"""
+    #     P.run()
 
     # VEP #
-    vep_annotators = PARAMS["annotations_vepannotators"]
-    vep_path = PARAMS["annotations_veppath"]
-    vep_cache = PARAMS["annotations_vepcache"]
-    vep_species = PARAMS["annotations_vepspecies"]
-    vep_assembly = PARAMS["annotations_vepassembly"]
-    if len(vep_annotators) != 0:
-        annostring = vep_annotators
-        statement = '''perl %(vep_path)s/variant_effect_predictor.pl
-                       --cache --dir %(vep_cache)s --species %(vep_species)s
-                       --assembly %(vep_assembly)s --input_file %(tempin)s
-                       --output_file %(tempout)s --force_overwrite
-                       %(annostring)s --offline;
-                       mv %(tempout)s %(tempin)s'''
-        P.run()
+    # shutil.copy("variants/phascons.vcf", tempin) #x#x#x#x#x
+    # vep_annotators = PARAMS["annotation_vepannotators"]
+    # vep_path = PARAMS["annotation_veppath"]
+    # vep_cache = PARAMS["annotation_vepcache"]
+    # vep_species = PARAMS["annotation_vepspecies"]
+    # vep_assembly = PARAMS["annotation_vepassembly"]
+    # if len(vep_annotators) != 0:
+    #     annostring = vep_annotators
+    #     statement = '''perl %(vep_path)s/variant_effect_predictor.pl
+    #                    --cache --dir %(vep_cache)s --vcf 
+    #                    --species %(vep_species)s
+    #                    --assembly %(vep_assembly)s --input_file %(tempin)s
+    #                    --output_file %(tempout)s --force_overwrite
+    #                    %(annostring)s --offline;
+    #                    cp %(tempout)s variants/vep.vcf;
+    #                    mv %(tempout)s %(tempin)s'''
+#        P.run()
 
-    # Custom #
+ #   Custom #
+    shutil.copy("variants/vep.vcf", "%s.vcf" % tempin) #x#x#x#x
     if len(custom) != 0:
         ctable = IOTools.openFile("%s/labels.txt" % custom).readlines()
+        andir = PARAMS["annotation_customanno"]
+        i = 0
         for line in ctable:
             line = line.strip().split("\t")
             ftype = line[0]
+            i += 1
             if ftype == "vcf":
                 vcfnam = line[1]
                 getcols = line[3]
-                statement = '''bcftools annotate -a %(vcfnam)s -c %(getcols)s
-                               %(tempin)s > %(tempout)s;
-                               mv %(tempout)s %(tempin)s'''
+                statement = '''bgzip %(tempin)s.vcf; tabix %(tempin)s.vcf.gz;
+                               bcftools annotate -a %(andir)s/%(vcfnam)s;
+                               -c %(getcols)s
+                               %(tempin)s.vcf.gz > %(tempout)s;
+                               cp %(tempout)s variants/custv%(i)d.vcf;
+                               mv %(tempout)s %(tempin)s.vcf'''
+                P.run()
             elif ftype == "table":
                 tabnam = line[1]
                 header = line[2]
                 getcols = line[3]
-                statement = '''bcftools annotate -a %(tabnam)s -h %(header)s
-                               -c %(getcols)s %(tempin)s > %(tempout)s;
-                               mv %(tempout)s %(tempin)s'''
+                statement = '''bgzip %(tempin)s.vcf; tabix %(tempin)s.vcf.gz;
+                               bcftools annotate -a %(andir)s/%(tabnam)s
+                               -h %(andir)s/%(header)s
+                               -c %(getcols)s %(tempin)s.vcf.gz > %(tempout)s;
+                               cp %(tempout)s variants/custt%(i)d.vcf
+                               mv %(tempout)s %(tempin)s.vcf'''
                 P.run()
-    statement = """mv %(tempin)s %(outfile)s"""
+    statement = """mv %(tempin)s.vcf %(outfile)s"""
     P.run()
 ###############################################################################
 ###############################################################################
