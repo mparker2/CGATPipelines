@@ -312,6 +312,12 @@ def getParameters(filenames=["pipeline.ini", ],
         if os.path.exists(fn):
             filenames.insert(0, fn)
 
+    # IMS: Several legacy scripts call this with a sting as input
+    # rather than a list. Check for this and correct
+
+    if isinstance(filenames, basestring):
+        filenames = [filenames]
+
     if default_ini:
         # The link between CGATPipelines and Pipeline.py
         # needs to severed at one point.
@@ -2741,10 +2747,8 @@ def main(args=sys.argv):
 
     elif options.pipeline_action == "dump":
         # convert to normal dictionary (not defaultdict) for parsing purposes
-	#print "dump = %s" % str(dict(PARAMS))
-	print "Printing out pipeline parameters: "
-	for k in sorted(PARAMS):
-            print k, "=", PARAMS[k]
+        # do not change this format below as it is exec'd in peekParameters()
+        print "dump = %s" % str(dict(PARAMS))
 
     elif options.pipeline_action == "config":
         f = sys._getframe(1)

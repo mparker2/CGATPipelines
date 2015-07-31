@@ -697,7 +697,7 @@ def runCufflinks(infiles, outfile):
     cufflinks --label %(track)s
               --GTF <(gunzip < %(gtffile)s)
               --num-threads %(cufflinks_threads)i
-              --frag-bias-correct %(bowtie_index_dir)s/%(genome)s.fa
+              --frag-bias-correct %(genome_dir)s/%(genome)s.fa
               --library-type %(cufflinks_library_type)s
               %(cufflinks_options)s
               %(bamfile)s
@@ -1222,6 +1222,7 @@ def runCuffdiff(bamfiles,
                 outfile,
                 cuffdiff_options="",
                 threads=4,
+                memory="4G",
                 fdr=0.1,
                 mask_file=None):
     '''estimate differential expression using cuffdiff.
@@ -1247,7 +1248,7 @@ def runCuffdiff(bamfiles,
         pass
 
     job_threads = threads
-
+    job_memory = memory
     # replicates are separated by ","
     reps = collections.defaultdict(list)
     for bamfile in bamfiles:

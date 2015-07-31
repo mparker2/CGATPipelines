@@ -844,9 +844,6 @@ def buildGeneSet(infile, outfile):
     --skip-missing
     --genome-file=%(genome_dir)s/%(genome)s
     --log=%(outfile)s.log
-    | python %(scriptsdir)s/gtf2gtf.py
-    --method=set-gene_biotype-to-source
-    --log=%(outfile)s.log
     ''']
 
     if PARAMS["ensembl_remove_contigs"]:
@@ -855,7 +852,12 @@ def buildGeneSet(infile, outfile):
         statement.append(
             ''' --contig-pattern="%(ensembl_remove_contigs)s" ''')
 
-    statement.append(''' | gzip > %(outfile)s ''')
+    statement.append(
+        '''
+        | python %(scriptsdir)s/gtf2gtf.py
+        --method=set-gene_biotype-to-source
+        --log=%(outfile)s.log
+        | gzip > %(outfile)s ''')
 
     statement = " ".join(statement)
 
@@ -961,7 +963,6 @@ def loadTranscripts(infile, outfile):
 @files(buildCDSTranscripts, "ensembl.dir/cds_stats.load")
 def loadCDSStats(infile, outfile):
     '''load the transcript set stats.'''
-
     PipelineGeneset.loadTranscriptStats(infile, outfile)
 
 
@@ -973,6 +974,9 @@ def downloadTranscriptInformation(infile, outfile):
 
     tablename = P.toTable(outfile)
 
+    # only use transcript relevant information. Uniprot ids
+    # should go into a separate table. There is some duplication
+    # here of gene information
     columns = {
         "ensembl_gene_id": "gene_id",
         "ensembl_transcript_id": "transcript_id",
@@ -983,17 +987,7 @@ def downloadTranscriptInformation(infile, outfile):
         "status": "gene_status",
         "transcript_status": "transcript_status",
         "external_gene_name": "gene_name",
-        "uniprot_sptrembl": "uniprot_id",
-        "uniprot_genename": "uniprot_name",
     }
-
-    # biomart db dmelanogaster_gene_ensemble doesn't have attribute
-    # uniprot_genename
-    if PARAMS["genome"].startswith("dm"):
-        del columns["uniprot_genename"]
-    # same fix for yeast
-    if PARAMS["genome"].startswith("sac"):
-        del columns["uniprot_genename"]
 
     data = Biomart.biomart_iterator(
         columns.keys(),

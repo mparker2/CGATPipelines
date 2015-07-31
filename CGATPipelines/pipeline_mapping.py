@@ -338,7 +338,7 @@ def buildReferenceGeneSet(infile, outfile):
     # Add tss_id and p_id
     PipelineMapping.resetGTFAttributes(
         infile=tmp_mergedfiltered,
-        genome=os.path.join(PARAMS["bowtie_index_dir"], PARAMS["genome"]),
+        genome=os.path.join(PARAMS["genome_dir"], PARAMS["genome"]),
         gene_ids=gene_ids,
         outfile=outfile)
 
@@ -404,9 +404,11 @@ def buildCodingGeneSet(infiles, outfile):
 
 @active_if(SPLICED_MAPPING)
 @follows(mkdir("geneset.dir"))
-@merge(PARAMS["annotations_interface_geneset_flat_gtf"],
-       "geneset.dir/introns.gtf.gz")
-def buildIntronGeneModels(infile, outfile):
+@transform(PARAMS["annotations_interface_geneset_flat_gtf"],
+           regex(".*"),
+           add_inputs(identifyProteinCodingGenes),
+           "geneset.dir/introns.gtf.gz")
+def buildIntronGeneModels(infiles, outfile):
     '''build protein-coding intron-transcipts.
 
     Intron-transcripts are the reverse complement of transcripts.
@@ -422,11 +424,13 @@ def buildIntronGeneModels(infile, outfile):
 
     filename_exons = PARAMS["annotations_interface_geneset_exons_gtf"]
 
+    infile, genes_tsv = infiles
+
     statement = '''
     zcat %(infile)s
     | python %(scriptsdir)s/gtf2gtf.py
     --method=filter
-    --filter-method=proteincoding
+    --map-tsv-file=%(genes_tsv)s
     --log=%(outfile)s.log
     | python %(scriptsdir)s/gtf2gtf.py
     --method=sort
@@ -501,7 +505,7 @@ def buildReferenceTranscriptome(infile, outfile):
     gtf_file = P.snip(infile, ".gz")
 
     genome_file = os.path.abspath(
-        os.path.join(PARAMS["bowtie_index_dir"], PARAMS["genome"] + ".fa"))
+        os.path.join(PARAMS["genome_dir"], PARAMS["genome"] + ".fa"))
 
     statement = '''
     zcat %(infile)s
@@ -890,10 +894,6 @@ def mapReadsWithGSNAP(infiles, outfile):
     statement = m.build((infile,), outfile)
     P.run()
 
-############################################################
-############################################################
-############################################################
-
 
 @active_if(SPLICED_MAPPING)
 @follows(mkdir("star.dir"))
@@ -916,10 +916,6 @@ def mapReadsWithSTAR(infile, outfile):
 
     statement = m.build((infile,), outfile)
     P.run()
-
-############################################################
-############################################################
-############################################################
 
 
 @active_if(SPLICED_MAPPING)
@@ -989,12 +985,6 @@ def mapReadsWithBowtieAgainstTranscriptome(infiles, outfile):
     statement = m.build((infile,), outfile)
     P.run()
 
-###################################################################
-###################################################################
-###################################################################
-# Map reads with bowtie
-###################################################################
-
 
 @follows(mkdir("bowtie.dir"))
 @transform(SEQUENCEFILES,
@@ -1007,22 +997,37 @@ def mapReadsWithBowtie(infiles, outfile):
     '''map reads with bowtie. For bowtie2 set executable apppropriately.'''
 
     job_threads = PARAMS["bowtie_threads"]
-    job_memory = "4G"
+    job_memory = PARAMS["bowtie_memory"]
 
     m = PipelineMapping.Bowtie(
         executable=P.substituteParameters(**locals())["bowtie_executable"],
+        tool_options=P.substituteParameters(**locals())["bowtie_options"],
         strip_sequence=PARAMS["strip_sequence"])
     infile, reffile = infiles
-    # IMS remove reporting options to the ini
-    # bowtie_options = "%s --best --strata -a" % PARAMS["bowtie_options"]
     statement = m.build((infile,), outfile)
     P.run()
 
-###################################################################
-###################################################################
-###################################################################
-# Map reads with bwa
-###################################################################
+
+@follows(mkdir("bowtie2.dir"))
+@transform(SEQUENCEFILES,
+           SEQUENCEFILES_REGEX,
+           add_inputs(
+               os.path.join(PARAMS["bowtie_index_dir"],
+                            PARAMS["genome"] + ".fa")),
+           r"bowtie2.dir/\1.bowtie2.bam")
+def mapReadsWithBowtie2(infiles, outfile):
+    '''map reads with bowtie. For bowtie2 set executable apppropriately.'''
+
+    job_threads = PARAMS["bowtie2_threads"]
+    job_memory = PARAMS["bowtie2_memory"]
+
+    m = PipelineMapping.Bowtie2(
+        executable=P.substituteParameters(**locals())["bowtie2_executable"],
+        tool_options=P.substituteParameters(**locals())["bowtie2_options"],
+        strip_sequence=PARAMS["strip_sequence"])
+    infile, reffile = infiles
+    statement = m.build((infile,), outfile)
+    P.run()
 
 
 @follows(mkdir("bwa.dir"))
@@ -1050,12 +1055,6 @@ def mapReadsWithBWA(infile, outfile):
 
     statement = m.build((infile,), outfile)
     P.run()
-
-###################################################################
-###################################################################
-###################################################################
-# Map reads with stampy
-###################################################################
 
 
 @follows(mkdir("stampy.dir"))
@@ -1116,6 +1115,7 @@ MAPPINGTARGETS = []
 mapToMappingTargets = {'tophat': (mapReadsWithTophat, loadTophatStats),
                        'tophat2': (mapReadsWithTophat2,),
                        'bowtie': (mapReadsWithBowtie,),
+                       'bowtie2': (mapReadsWithBowtie2,),
                        'bwa': (mapReadsWithBWA,),
                        'stampy': (mapReadsWithStampy,),
                        'transcriptome':
@@ -1234,7 +1234,7 @@ else:
 
 @transform(MAPPINGTARGETS,
            suffix(".bam"),
-           add_inputs(os.path.join(PARAMS["bowtie_index_dir"],
+           add_inputs(os.path.join(PARAMS["genome_dir"],
                                    PARAMS["genome"] + ".fa")),
            ".picard_stats")
 def buildPicardStats(infiles, outfile):
