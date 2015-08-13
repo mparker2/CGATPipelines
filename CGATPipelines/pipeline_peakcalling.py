@@ -1878,7 +1878,8 @@ def reproducibility():
 # TS. removed loadSPPQualityMetrics as run_spp.R cannot be found
 # ValueError("could not find run_spp.R")
 @follows(loadBAMStats,
-         loadDuplicationStats)
+         loadDuplicationStats,
+         loadSPPQualityMetrics)
 def qc():
     pass
 
