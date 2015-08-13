@@ -1,4 +1,4 @@
-from AnnotationReport import *
+from CGATReport.Tracker import Status
 
 import CGAT.Pipeline as P
 import CGAT.IOTools as IOTools
@@ -33,7 +33,6 @@ class AnnotationStatus(Status):
 
         The value indicates the number of lines in the file.
         '''
-        
         fn = PARAMS[track]
         if not os.path.exists(fn):
             return ('NA', 0)

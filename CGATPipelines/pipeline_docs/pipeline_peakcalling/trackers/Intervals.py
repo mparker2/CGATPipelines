@@ -1,22 +1,17 @@
-from PeakcallingReport import *
+from PeakcallingReport import DefaultTracker
+from collections import OrderedDict as odict
+import CGAT.IOTools as IOTools
+import os
+import numpy
+import glob
 
-import CGAT.IOTools
 
-
-class FoldChangeTracker(TrackerSQL):
-
+class FoldChangeTracker(DefaultTracker):
     '''the fold change tracker ignores unstimulated tracks.'''
 
-    def __init__(self, *args, **kwargs):
-        TrackerSQL.__init__(self, *args, backend=DATABASE, **kwargs)
-
     def getTracks(self, subset=None):
-        tracks = TrackerSQL.getTracks(self, subset=subset)
+        tracks = DefaultTracker.getTracks(self, subset=subset)
         return [x for x in tracks if TAG_UNSTIM not in x]
-
-##########################################################################
-##########################################################################
-##########################################################################
 
 
 class PeaksIntervals:
@@ -32,12 +27,6 @@ class RegionsIntervals:
 class SummitsIntervals:
     pattern = "(.*)_(.*)_summits$"
     suffix = "summits"
-
-##########################################################################
-##########################################################################
-##########################################################################
-# Summarise intervals as a table
-##########################################################################
 
 
 class IntervalsSummaryTable(DefaultTracker):
@@ -74,7 +63,9 @@ class IntervalsSummaryTable(DefaultTracker):
             fdr_value = "%s" % data[4]
         fdata = map(str, data[0:4]) + [fdr_value]
 
-        return odict(zip(("nintervals", "avg(length)", "min(length)", "max(length)", "max reported %s" % fdr_col_head), fdata))
+        return odict(zip((
+            "nintervals", "avg(length)", "min(length)",
+            "max(length)", "max reported %s" % fdr_col_head), fdata))
 
 
 class PeaksSummaryTable(PeaksIntervals, IntervalsSummaryTable):
@@ -87,12 +78,6 @@ class RegionsSummaryTable(RegionsIntervals, IntervalsSummaryTable):
 
 class SummitsSummaryTable(SummitsIntervals, IntervalsSummaryTable):
     pass
-
-##########################################################################
-##########################################################################
-##########################################################################
-# Summarise intervals
-##########################################################################
 
 
 class IntervalsSummary(DefaultTracker):
@@ -135,7 +120,7 @@ class IntervalLengths(DefaultTracker):
         table = "%s_%s_%s" % (track, slice, self.suffix)
         if not self.hasTable(table):
             return
-        
+
         data = self.getValues(
             "SELECT length FROM %(table)s")
         return {"length": data}
@@ -492,7 +477,7 @@ class IntervalListFoldChange(FoldChangeTracker, IntervalList):
 ##########################################################################
 
 
-class Correlations(CallingTracker):
+class Correlations(DefaultTracker):
 
     """Correlation between all sets.
     """
@@ -501,9 +486,8 @@ class Correlations(CallingTracker):
 
     def __call__(self, track, slice=None):
         table = "%s_correlation" % self.field
-        return self.getValues("SELECT %s AS %s FROM %s ORDER BY id" % (track,
-                                                                       self.field,
-                                                                       table))
+        return self.getValues("SELECT %s AS %s FROM %s ORDER BY id" %
+                              (track, self.field, table))
 
 
 class CorrelationsPeakval(Correlations):
@@ -567,21 +551,26 @@ class FoldChangeCounts(FoldChangeTracker):
 ##########################################################################
 
 
-class PeakShapeTracker(Tracker):
+class PeakShapeTracker(DefaultTracker):
 
     '''return peakshape data.
 
     Only 1000 rows are returned.
     '''
 
-    tracks = [os.path.basename(x)[:-len(".peakshape.tsv.gz")]
-              for x in glob.glob(os.path.join(DATADIR, "peakshapes.dir", "*.regions.peakshape.tsv.gz"))]
     slices = ["peak_height", "peak_width"]
+
+    def getTracks(self):
+        return [os.path.basename(x)[:-len(".peakshape.tsv.gz")]
+                for x in glob.glob(os.path.join(self.datadir,
+                                                "peakshapes.dir",
+                                                "*.regions.peakshape.tsv.gz"))]
 
     def __call__(self, track, slice=None):
 
         fn = os.path.join(
-            DATADIR, "peakshapes.dir", "%(track)s.peakshape.tsv.gz.matrix_%(slice)s.gz" % locals())
+            self.datadir, "peakshapes.dir",
+            "%(track)s.peakshape.tsv.gz.matrix_%(slice)s.gz" % locals())
         if not os.path.exists(fn):
             return
 
@@ -602,7 +591,7 @@ class PeakShapeTracker(Tracker):
                       ('columns', colnames)))
 
 
-class PeakShapeSummary(Tracker):
+class PeakShapeSummary(DefaultTracker):
 
     '''summary information about peak shapes.'''
     pattern = "(.*)_peakshape"

@@ -1070,12 +1070,13 @@ def loadCuffdiff(infile, outfile, min_fpkm=1.0):
         # of summary statistics and is done via loading into a pandas database
         # and modifying the column headers accordingly
         pandas_tmp = pandas.DataFrame.from_csv(infile, sep='\t')
-        pandas_tmp.rename(columns={'sample_1': 'treatment_name'}, inplace=True)
-        pandas_tmp.rename(columns={'sample_2': 'control_name'}, inplace=True)
-        pandas_tmp.rename(columns={'log2(fold_change)': 'l2fold'},
-                          inplace=True)
-        pandas_tmp.rename(columns={'p_value': 'pvalue'}, inplace=True)
-        pandas_tmp.rename(columns={'q_value': 'qvalue'}, inplace=True)
+        pandas_tmp.rename(columns={'sample_1': 'treatment_name',
+                                   'sample_2': 'control_name',
+                                   'value_1': 'treatment_mean',
+                                   'value_2': 'control_mean',
+                                   'log2(fold_change)': 'l2fold',
+                                   'p_value': 'pvalue',
+                                   'q_value': 'qvalue'}, inplace=True)
         d = {"yes": 1, "no": 0}
         pandas_tmp["significant"] = pandas_tmp["significant"].map(d)
 

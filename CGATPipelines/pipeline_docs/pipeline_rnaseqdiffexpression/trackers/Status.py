@@ -1,7 +1,6 @@
-import itertools
 import numpy
 
-from RnaseqDiffExpressionReport import *
+from CGATReport.Tracker import Status
 
 
 class ExpressionStatus(Status):

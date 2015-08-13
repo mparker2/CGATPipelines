@@ -9,3 +9,4 @@ This section lists all the Fastqc_ base quality plots.
    :layout: column-2
 
    Per base quality plots
+

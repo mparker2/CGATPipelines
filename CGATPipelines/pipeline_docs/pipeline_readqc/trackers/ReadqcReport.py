@@ -2,36 +2,18 @@ import os
 import glob
 from collections import OrderedDict as odict
 from CGATReport.Tracker import TrackerSQL, SingleTableTrackerRows
-from CGATReport.Utils import PARAMS as P
 from CGATReport.Utils import ResultBlock, ResultBlocks, layoutBlocks
-import CGATPipelines.PipelineTracks as PipelineTracks
-
-# parameterization
-EXPORTDIR = P.get('readqc_exportdir', P.get('exportdir', 'export'))
-DATADIR = P.get('readqc_datadir', P.get('datadir', '.'))
-DATABASE = P.get('readqc_backend', P.get('sql_backend', 'sqlite:///./csvdb'))
-PROCESSEDDIR = "processed.dir" 
-
-TRACKS = PipelineTracks.Tracks(PipelineTracks.Sample).loadFromDirectory(
-    glob.glob("%s/*.sra" % DATADIR), "(\S+).sra") +\
-    PipelineTracks.Tracks(PipelineTracks.Sample).loadFromDirectory(
-        glob.glob("%s/*.fastq.gz" % DATADIR), "(\S+).fastq.gz") +\
-    PipelineTracks.Tracks(PipelineTracks.Sample).loadFromDirectory(
-        glob.glob("%s/*.fastq.1.gz" % DATADIR), "(\S+).fastq.1.gz") +\
-    PipelineTracks.Tracks(PipelineTracks.Sample).loadFromDirectory(
-        glob.glob("*.csfasta.gz"), "(\S+).csfasta.gz") +\
-    PipelineTracks.Tracks(PipelineTracks.Sample).loadFromDirectory(
-        glob.glob("%s/*.fastq.gz" % PROCESSEDDIR), "(\S+).fastq.gz") +\
-    PipelineTracks.Tracks(PipelineTracks.Sample).loadFromDirectory(
-        glob.glob("%s/*.fastq.1.gz" % PROCESSEDDIR), "(\S+).fastq.1.gz")
 
 
 class ReadqcTracker(TrackerSQL):
-
     '''Define convenience tracks for plots'''
 
     def __init__(self, *args, **kwargs):
-        TrackerSQL.__init__(self, *args, backend=DATABASE, **kwargs)
+
+        TrackerSQL.__init__(self, *args, **kwargs)
+        samples = glob.glob(os.path.join(self.datadir, "*.fastqc"))
+        self.samples = sorted([os.path.splitext(os.path.basename(x))[0]
+                               for x in samples])
 
 
 class TrackerFastQC(ReadqcTracker):
@@ -39,16 +21,15 @@ class TrackerFastQC(ReadqcTracker):
 
     def __call__(self, track, slice=None):
 
-        edir = EXPORTDIR
+        edir = os.path.join(self.datadir, "export")
 
         toc_text = []
         link_text = []
 
-        tracks = sorted([x.asFile() for x in TRACKS])
-        for track in tracks:
+        for track in self.samples:
 
             for x, fn in enumerate(glob.glob(os.path.join(
-                    EXPORTDIR, "fastqc", "%s*_fastqc" % track))):
+                    edir, "fastqc", "%s*_fastqc" % track))):
                 y = x + 1
                 toc_text.append("* %(track)s-%(y)i_" % locals())
                 link_text.append(
@@ -86,12 +67,13 @@ class FastQCDetails(ReadqcTracker):
 """
         result = odict()
 
-        for track in sorted([x.asFile() for x in TRACKS]):
+        for track in self.samples:
             if track.startswith("trimmed"):
                 continue
 
             files = glob.glob(
-                os.path.join(EXPORTDIR, "fastqc", "*%s*_fastqc" % track))
+                os.path.join(self.datadir, "export",
+                             "fastqc", "*%s*_fastqc" % track))
 
             text = ["%s\n\n" % track]
 

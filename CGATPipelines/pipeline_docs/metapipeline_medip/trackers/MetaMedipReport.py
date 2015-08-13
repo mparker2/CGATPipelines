@@ -1,19 +1,10 @@
 import os
 import glob
 
-from CGATReport.Tracker import *
+from CGATReport.Tracker import TrackerSQL
 from CGATReport.Utils import PARAMS as P
 import Pipeline
 import PipelineTracks
-
-###################################################################
-###################################################################
-###################################################################
-###################################################################
-# Run configuration script
-EXPORTDIR = P['metamedip_exportdir']
-DATADIR = P['metamedip_datadir']
-DATABASE = P['metamedip_backend']
 
 ###################################################################
 # cf. pipeline_medip.py
@@ -35,11 +26,7 @@ Sample.setDefault("asTable")
 
 
 class MetaMedipTracker(TrackerSQL):
-
     '''Define convenience tracks for plots'''
-
-    def __init__(self, *args, **kwargs):
-        TrackerSQL.__init__(self, *args, backend=DATABASE, **kwargs)
 
 
 class SummaryCalledDMRs(MetaMedipTracker):
@@ -55,9 +42,10 @@ class SummaryCalledDMRs(MetaMedipTracker):
         return self.getValues("SELECT DISTINCT test FROM %s" % self.table)
 
     def __call__(self, track, slice):
-        data = self.getAll( """SELECT ntested, nok, nsignificant, n2fold FROM %(table)s 
-                                  WHERE metatrack = '%(track)s' AND 
-                                        test = '%(slice)s' """ )
+        data = self.getAll(
+            """SELECT ntested, nok, nsignificant, n2fold FROM %(table)s
+            WHERE metatrack = '%(track)s' AND
+            test = '%(slice)s'""")
         return data
 
 
@@ -74,9 +62,9 @@ class SummaryMapping(MetaMedipTracker):
         return self.getValues("SELECT DISTINCT track FROM %s" % self.table)
 
     def __call__(self, track, slice):
-        data = self.getAll( """SELECT * FROM %(table)s
-                                  WHERE metatrack = '%(track)s' AND 
-                                        track = '%(slice)s' """ )
+        data = self.getAll("""SELECT * FROM %(table)s
+        WHERE metatrack = '%(track)s' AND
+        track = '%(slice)s' """)
         return data
 
 
@@ -93,10 +81,11 @@ class SummaryCpGCoverage(MetaMedipTracker):
         return self.getValues("SELECT DISTINCT track FROM %s" % self.table)
 
     def __call__(self, track, slice):
-        data = self.getAll( """SELECT coverage, ncovered, pcovered FROM %(table)s 
-                                  WHERE metatrack = '%(track)s' AND 
-                                        track = '%(slice)s'
-                                  ORDER BY coverage""" )
+        data = self.getAll(
+            """SELECT coverage, ncovered, pcovered FROM %(table)s
+            WHERE metatrack = '%(track)s' AND
+            track = '%(slice)s'
+            ORDER BY coverage""")
         return data
 
 
@@ -107,7 +96,7 @@ class ReportsList(MetaMedipTracker):
     tracks = TRACKS
 
     def __call__(self, track):
-        datadir = os.path.abspath(DATADIR)
+        datadir = self.datadir
         return "`medip_%(track)s <%(datadir)s/medip_%(track)s/report/html/contents.html>`_" % locals()
 
 # TODO:

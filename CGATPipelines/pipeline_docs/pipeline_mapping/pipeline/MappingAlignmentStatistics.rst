@@ -29,11 +29,11 @@ This section brings together various alignment statistics.
 Picard metrics
 ==============
 
-The following table present an overview of the alignments in the 
-BAM files for each :term:`track`. See the 
-`Picard metrics <http://picard.sourceforge.net/picard-metric-definitions.shtml#AlignmentSummaryMetrics>`_
-for a definition of the field contents.
-(note: PF=pass filter, reads that pass the vendor's filter criteria).
+The following table present an overview of the alignments in the BAM
+files for each :term:`track`. See the `Picard metrics
+<http://picard.sourceforge.net/picard-metric-definitions.shtml#AlignmentSummaryMetrics>`_
+for a definition of the field contents.  (note: PF=pass filter, reads
+that pass the vendor's filter criteria).
 
 .. report:: Mapping.PicardSummary
    :render: table

@@ -1,7 +1,9 @@
 import re
 import glob
+import os
 
-from CGATReport.Tracker import *
+from CGATReport.Tracker import TrackerSQL
+
 from CGATReport.Utils import PARAMS as P
 
 from CGATPipelines.PipelineGeneset import mapUCSCToEnsembl
@@ -14,64 +16,8 @@ UCSC_DATABASE = P["genome"]
 ###################################################################
 # parameterization
 
-EXPORTDIR = P.get(
-    'rnaseqdiffexpression_exportdir', P.get('exportdir', 'export'))
-DATADIR = P.get('rnaseqdiffexpression_datadir', P.get('datadir', '.'))
-DATABASE = P.get('rnaseqdiffexpression_backend', P.get(
-    'sql_backend', 'sqlite:///./csvdb'))
-
 DATABASE_ANNOTATIONS = P['annotations_database']
-
-###################################################################
-# cf. pipeline_rnaseq.py
-# This should be automatically gleaned from pipeline_rnaseq.py
-###################################################################
-
-
-TRACKS = PipelineTracks.Tracks(PipelineTracks.Sample).loadFromDirectory(
-    glob.glob("%s/*.bam" % DATADIR), "(\S+).bam")
-
-ALL = PipelineTracks.Aggregate(TRACKS)
-EXPERIMENTS = PipelineTracks.Aggregate(TRACKS, labels=("condition", "tissue"))
-CONDITIONS = PipelineTracks.Aggregate(TRACKS, labels=("condition", ))
-TISSUES = PipelineTracks.Aggregate(TRACKS, labels=("tissue", ))
-
-GENESETS = PipelineTracks.Tracks(PipelineTracks.Sample).loadFromDirectory(
-    glob.glob("*.gtf.gz"), "(\S+).gtf.gz")
-
-DESIGNS = PipelineTracks.Tracks(PipelineTracks.Sample).loadFromDirectory(
-    glob.glob("design*.tsv"), "(\S+).tsv")
-
-METHODS = PipelineTracks.Tracks(PipelineTracks.Sample).loadFromDirectory(
-    glob.glob("*_stats.tsv"), "(\S+)_stats.tsv")
-
-###########################################################################
 CUFFDIFF_LEVELS = ("gene", "isoform", "cds", "tss")
-
-###########################################################################
-# shorthand
-MAP_TRACKS = {
-    'default': EXPERIMENTS,
-    'experiments': EXPERIMENTS,
-    'conditions': CONDITIONS,
-    'tissues': TISSUES,
-    'merged': ALL,
-    'geneset-summary': GENESETS}
-
-###########################################################################
-
-
-def selectTracks(subset):
-    '''select tracks from *all_tracks* according to *subset*.
-    '''
-    if subset is None or subset == "default":
-        return MAP_TRACKS["default"]
-    elif subset in MAP_TRACKS:
-        return MAP_TRACKS[subset]
-
-    return subset
-
-###########################################################################
 
 
 def splitLocus(locus):
@@ -116,6 +62,22 @@ class ProjectTracker(TrackerSQL):
     def __init__(self, *args, **kwargs):
         TrackerSQL.__init__(self,
                             *args,
-                            backend=DATABASE,
                             attach=[(DATABASE_ANNOTATIONS, 'annotations')],
                             **kwargs)
+
+        designs = glob.glob(os.path.join(self.datadir, "design*.tsv"))
+        self.designs = sorted([os.path.splitext(os.path.basename(x))[0]
+                               for x in designs])
+
+        genesets = glob.glob(os.path.join(self.datadir, "*.gtf.gz"))
+        self.genesets = sorted([os.path.splitext(os.path.basename(x))[:-7]
+                                for x in genesets])
+
+        self.samples = PipelineTracks.Tracks(PipelineTracks.Sample).loadFromDirectory(
+            glob.glob("%s/*.bam" % self.datadir), "(\S+).bam")
+        self.experiments = PipelineTracks.Aggregate(
+            self.samples, labels=("condition", "tissue"))
+        self.conditions = PipelineTracks.Aggregate(
+            self.samples, labels=("condition", ))
+        self.tissues = PipelineTracks.Aggregate(
+            self.samples, labels=("tissue", ))

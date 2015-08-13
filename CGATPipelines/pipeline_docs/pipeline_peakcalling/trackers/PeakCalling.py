@@ -28,7 +28,8 @@ class MacsSummary(DefaultTracker):
 
     def __call__(self, track, slice=None):
 
-        resultsdir = os.path.abspath(os.path.join(EXPORTDIR, "MACS"))
+        resultsdir = os.path.abspath(os.path.join(
+            self.datadir, "export", "MACS"))
 
         fields = self.getColumns(self.tablename)
 

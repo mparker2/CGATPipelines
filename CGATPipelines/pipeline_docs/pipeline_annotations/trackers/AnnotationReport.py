@@ -1,27 +1,9 @@
-from CGATReport.Tracker import *
-from CGATReport.Utils import PARAMS as P
-from collections import OrderedDict as odict
-
-###################################################################
-# parameterization
-
-EXPORTDIR = P.get(
-    'annotations_exportdir',
-    P.get('exportdir', 'export'))
-DATADIR = P.get(
-    'annotations_datadir',
-    P.get('datadir', '.'))
-DATABASE = P.get(
-    'annotations_backend',
-    P.get('sql_backend', 'sqlite:///./csvdb'))
+from CGATReport.Tracker import TrackerSQL, \
+    SingleTableTrackerRows, TrackerSQLCheckTables
 
 
 class AnnotationTracker(TrackerSQL):
-
-    '''Define convenience tracks for plots'''
-
-    def __init__(self, *args, **kwargs):
-        TrackerSQL.__init__(self, *args, backend=DATABASE, **kwargs)
+    """Define convenience tracks for plots"""
 
 
 class BedSummaryIntervals(TrackerSQL):

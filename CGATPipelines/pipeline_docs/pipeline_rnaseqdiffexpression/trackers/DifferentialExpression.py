@@ -3,7 +3,10 @@ import itertools
 import math
 import sqlite3
 
-from RnaseqDiffExpressionReport import *
+from collections import OrderedDict as odict
+
+from CGATReport.Tracker import Tracker, SingleTableTrackerRows
+from RnaseqDiffExpressionReport import ProjectTracker, CUFFDIFF_LEVELS
 
 
 class DESummary(ProjectTracker, SingleTableTrackerRows):
@@ -35,10 +38,16 @@ class TrackerEdgeRSummary(ProjectTracker):
         return self.getAll("SELECT sample, * FROM %(track)s_edger_summary")
 
 
-class TrackerDESeqFit(Tracker):
+class GenesetDesignTracker(ProjectTracker):
+    def getTracks(self):
+        return self.designs
+
+    def getSlices(self):
+        return self.genesets
+
+
+class TrackerDESeqFit(GenesetDesignTracker):
     method = "deseq"
-    tracks = [x.asFile() for x in DESIGNS]
-    slices = [x.asTable() for x in GENESETS]
 
     def __call__(self, track, slice=None):
         design = track
@@ -88,10 +97,7 @@ class TrackerDESummaryCuffdiff(ProjectTracker, SingleTableTrackerRows):
 ##############################################################
 
 
-class TrackerDESummaryPlots(Tracker):
-
-    tracks = [x.asFile() for x in DESIGNS]
-    slices = [x.asFile() for x in GENESETS]
+class TrackerDESummaryPlots(GenesetDesignTracker):
 
     def __call__(self, track, slice=None):
         design = track
@@ -137,10 +143,7 @@ class TrackerDESummaryPlotsCuffdiff(TrackerDESummaryPlots):
     levels = CUFFDIFF_LEVELS
 
 
-class TrackerDifferentialExpression(Tracker):
-
-    tracks = [x.asFile() for x in GENESETS]
-    slices = [x.asFile() for x in DESIGNS]
+class TrackerDifferentialExpression(GenesetDesignTracker):
 
     def __call__(self, track, slice=None):
 
@@ -150,7 +153,7 @@ class TrackerDifferentialExpression(Tracker):
         geneset = track
 
         for level in self.levels:
-            for x, y in itertools.combinations(EXPERIMENTS, 2):
+            for x, y in itertools.combinations(self.experiments, 2):
                 filename = "%(method)s.dir/%(design)s_%(geneset)s_%(level)s_%(x)s_vs_%(y)s_significance.png" % locals()
                 if not os.path.exists(filename):
                     continue
@@ -332,7 +335,9 @@ class DifferentialExpressionCorrelationFoldChangeDeseqEdger(
 class VolcanoTracker(ProjectTracker):
 
     '''insert volcano plots.'''
-    tracks = [x.asFile() for x in GENESETS]
+
+    def getTracks(self):
+        return self.genesets
 
     def __call__(self, track, slice=None):
 

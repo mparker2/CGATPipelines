@@ -1,12 +1,6 @@
-import os
-import sys
 import re
-import types
-import itertools
-import math
-import numpy
 
-from PeakcallingReport import *
+from CGATReport.Tracker import Status
 
 
 class PeakCallingStatus(Status):
@@ -26,7 +20,7 @@ class PeakCallingStatus(Status):
         suffix = re.sub("^[^_]*_", "", self.pattern[:-1])
 
         value = self.getValue(
-            """SELECT COUNT(*) FROM %(track)s_%(suffix)s""" )
+            """SELECT COUNT(*) FROM %(track)s_%(suffix)s""")
         if value >= 1000:
             status = "PASS"
         elif value >= 100:
@@ -42,7 +36,7 @@ class PeakCallingStatusMACS(PeakCallingStatus):
 
 
 class PeakCallingStatusMACS2(PeakCallingStatus):
-    pattern = ("(.*)_macs2_regions$")
+    pattern = ("(.*)_macs2_peaks$")
 
 
 class PeakCallingStatusSPP(PeakCallingStatus):
@@ -86,7 +80,7 @@ class EncodeQualityMetrics(Status):
         '''
 
         value = self.getValue(
-            """SELECT nsc FROM %(tablename)s WHERE track = '%(track)s'""" )
+            """SELECT nsc FROM %(tablename)s WHERE track = '%(track)s'""")
         if value >= 1.1:
             status = "PASS"
         elif value >= 1.05:
@@ -105,7 +99,7 @@ class EncodeQualityMetrics(Status):
         '''
 
         value = self.getValue(
-            """SELECT rsc FROM %(tablename)s WHERE track = '%(track)s'""" )
+            """SELECT rsc FROM %(tablename)s WHERE track = '%(track)s'""")
         if value >= 1.0:
             status = "PASS"
         elif value >= 0.8:
@@ -117,14 +111,16 @@ class EncodeQualityMetrics(Status):
 
     def testMappedReads(self, track):
         '''ENCODE recommends 10Mio uniquely mapped reads for mammalian genomes
-        for point-binding intervals and at least 20Mio mapped reads for broad peaks.
+        for point-binding intervals and at least 20Mio mapped reads
+        for broad peaks.
 
         PASS : >= 20000000
         WARN : >= 10000000
         FAIL : <10000000
+
         '''
         value = self.getValue(
-            """SELECT mapped_reads FROM %(tablename)s WHERE track = '%(track)s'""" )
+            """SELECT mapped_reads FROM %(tablename)s WHERE track = '%(track)s'""")
         if value >= 2e7:
             status = "PASS"
         elif value >= 1e7:
