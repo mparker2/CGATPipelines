@@ -131,17 +131,8 @@ get_cgat_env() {
 
 if [ $TRAVIS_INSTALL ] ; then
 
-   if [ $TEST_PRODUCTION_SCRIPTS ] ; then
-
-      CGAT_HOME=$TRAVIS_BUILD_DIR
-      CONDA_INSTALL_TYPE="cgat-scripts"
-
-   else
-
-      CGAT_HOME=$TRAVIS_BUILD_DIR
-      CONDA_INSTALL_TYPE="cgat-devel"
-
-   fi # if-production scripts
+   CGAT_HOME=$TRAVIS_BUILD_DIR
+   CONDA_INSTALL_TYPE="cgat-devel"
 
 else
 
@@ -257,7 +248,7 @@ if [ "$CONDA_INSTALL_TYPE" == "cgat-scripts" ] ; then
 
 else
 
-   conda create -q -n $CONDA_INSTALL_TYPE $CONDA_INSTALL_TYPE gcc=4.8.3 --override-channels --channel https://conda.binstar.org/cgat --channel defaults --channel https://conda.binstar.org/r --yes
+   conda create -q -n $CONDA_INSTALL_TYPE $CONDA_INSTALL_TYPE=0.2 gcc=4.8.3 --override-channels --channel https://conda.binstar.org/cgat --channel defaults --channel https://conda.binstar.org/r --yes
 
 fi
 
@@ -300,7 +291,7 @@ if [ "$OS" != "travis" ] ; then
          echo " Installation did not finish properly. "
          echo 
          echo " Please submit this issue via Git Hub: "
-         echo " https://github.com/CGATOxford/cgat/issue "
+         echo " https://github.com/CGATOxford/cgat/issues "
 	 echo
          echo " Debugging: "
          echo " CFLAGS: "$CFLAGS
@@ -320,7 +311,7 @@ if [ "$OS" != "travis" ] ; then
       echo " Installation did not finish properly. "
       echo
       echo " Please submit this issue via Git Hub: "
-      echo " https://github.com/CGATOxford/cgat/issue "
+      echo " https://github.com/CGATOxford/cgat/issues "
       echo
       echo " Debugging: "
       echo " CGAT_HOME: "$CGAT_HOME
@@ -334,7 +325,7 @@ if [ "$OS" != "travis" ] ; then
       echo
       echo " To activate the CGAT environment type: "
       echo " $ source $CONDA_INSTALL_DIR/bin/activate $CONDA_INSTALL_TYPE"
-      [ "$INSTALL_SCRIPTS" == "1" ] && echo " cgat --help"
+      [ $INSTALL_SCRIPTS ] && echo " cgat --help"
       echo
       echo " To deactivate the environment, use:"
       echo " $ source deactivate"
@@ -477,7 +468,7 @@ if [ ! $? -eq 0 ] ; then
    echo " There was a problem updating the installation. "
    echo 
    echo " Please submit this issue via Git Hub: "
-   echo " https://github.com/CGATOxford/cgat/issue "
+   echo " https://github.com/CGATOxford/cgat/issues "
    echo 
 
 else 
