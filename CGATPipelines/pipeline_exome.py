@@ -837,60 +837,55 @@ def annotateVariantsSNPsift(infile, outfile):
     custom = PARAMS["annotation_customanno"]
     shutil.copy(infile, tempin)
 
-    # SNPsift #
-    # if "dbNSFP" in SNPsift:
-    #     dbNSFP = PARAMS["annotation_dbnsfp"]
-    #     dbN_annotators = PARAMS["annotation_dbnsfpannotators"]
-    #     if len(dbN_annotators) == 0:
-    #         annostring = ""
-    #     else:
-    #         annostring = "-f %s" % dbN_annotators
-    #     statement = """SnpSift.sh dbnsfp -db %(dbNSFP)s -v %(tempin)s
-    #                    %(annostring)s >
-    #                    %(tempout)s;
-    #                    cp %(tempout)s variants/dpnsfp.vcf;
-    #                    mv %(tempout)s %(tempin)s"""
-    #     P.run()
+    # SNP Sift #
+    if "dbNSFP" in SNPsift:
+        dbNSFP = PARAMS["annotation_dbnsfp"]
+        dbN_annotators = PARAMS["annotation_dbnsfpannotators"]
+        if len(dbN_annotators) == 0:
+            annostring = ""
+        else:
+            annostring = "-f %s" % dbN_annotators
+        statement = """SnpSift.sh dbnsfp -db %(dbNSFP)s -v %(tempin)s
+                       %(annostring)s >
+                       %(tempout)s;
+                       mv %(tempout)s %(tempin)s"""
+        P.run()
 
-    # if "gwascatalog" in SNPsift:
-    #     gwas_catalog = PARAMS["annotation_gwas_catalog"]
-    #     statement = """SnpSift.sh gwasCat -db %(gwas_catalog)s
-    #                    %(tempin)s > %(tempout)s;
-    #                    cp %(tempout)s variants/gwascat.vcf;
-    #                    mv %(tempout)s %(tempin)s"""
-    #     P.run()
+    if "gwascatalog" in SNPsift:
+        gwas_catalog = PARAMS["annotation_gwas_catalog"]
+        statement = """SnpSift.sh gwasCat -db %(gwas_catalog)s
+                       %(tempin)s > %(tempout)s;
+                       mv %(tempout)s %(tempin)s"""
+        P.run()
 
-    # if "phastcons" in SNPsift:
-    #     genomeind = "%s.fai" % genome
-    #     phastcons = PARAMS["annotation_phastcons"]
-    #     statement = """cp %(genomeind)s %(phastcons)s/genome.fai;
-    #                    SnpSift.sh phastCons %(phastcons)s %(tempin)s >
-    #                    %(tempout)s;
-    #                    cp %(tempout)s variants/phascons.vcf;
-    #                    mv %(tempout)s %(tempin)s"""
-    #     P.run()
+    if "phastcons" in SNPsift:
+        genomeind = "%s.fai" % genome
+        phastcons = PARAMS["annotation_phastcons"]
+        statement = """cp %(genomeind)s %(phastcons)s/genome.fai;
+                       SnpSift.sh phastCons %(phastcons)s %(tempin)s >
+                       %(tempout)s;
+                       mv %(tempout)s %(tempin)s"""
+        P.run()
 
     # VEP #
-    # shutil.copy("variants/phascons.vcf", tempin) #x#x#x#x#x
-    # vep_annotators = PARAMS["annotation_vepannotators"]
-    # vep_path = PARAMS["annotation_veppath"]
-    # vep_cache = PARAMS["annotation_vepcache"]
-    # vep_species = PARAMS["annotation_vepspecies"]
-    # vep_assembly = PARAMS["annotation_vepassembly"]
-    # if len(vep_annotators) != 0:
-    #     annostring = vep_annotators
-    #     statement = '''perl %(vep_path)s/variant_effect_predictor.pl
-    #                    --cache --dir %(vep_cache)s --vcf 
-    #                    --species %(vep_species)s
-    #                    --assembly %(vep_assembly)s --input_file %(tempin)s
-    #                    --output_file %(tempout)s --force_overwrite
-    #                    %(annostring)s --offline;
-    #                    cp %(tempout)s variants/vep.vcf;
-    #                    mv %(tempout)s %(tempin)s'''
-#        P.run()
+    vep_annotators = PARAMS["annotation_vepannotators"]
+    vep_path = PARAMS["annotation_veppath"]
+    vep_cache = PARAMS["annotation_vepcache"]
+    vep_species = PARAMS["annotation_vepspecies"]
+    vep_assembly = PARAMS["annotation_vepassembly"]
+    if len(vep_annotators) != 0:
+        annostring = vep_annotators
+        statement = '''perl %(vep_path)s/variant_effect_predictor.pl
+                       --cache --dir %(vep_cache)s --vcf
+                       --species %(vep_species)s
+                       --assembly %(vep_assembly)s --input_file %(tempin)s
+                       --output_file %(tempout)s --force_overwrite
+                       %(annostring)s --offline;
+                       cp %(tempout)s variants/vep.vcf;
+                       mv %(tempout)s %(tempin)s'''
+        P.run()
 
- #   Custom #
-    shutil.copy("variants/vep.vcf", "%s.vcf" % tempin) #x#x#x#x
+    # Custom #
     if len(custom) != 0:
         ctable = IOTools.openFile("%s/labels.txt" % custom).readlines()
         andir = PARAMS["annotation_customanno"]
@@ -902,8 +897,9 @@ def annotateVariantsSNPsift(infile, outfile):
             if ftype == "vcf":
                 vcfnam = line[1]
                 getcols = line[3]
-                statement = '''bgzip %(tempin)s.vcf; tabix %(tempin)s.vcf.gz;
-                               bcftools annotate -a %(andir)s/%(vcfnam)s;
+                statement = '''bgzip -f %(tempin)s.vcf;
+                               tabix -f %(tempin)s.vcf.gz;
+                               bcftools annotate -a %(andir)s/%(vcfnam)s
                                -c %(getcols)s
                                %(tempin)s.vcf.gz > %(tempout)s;
                                cp %(tempout)s variants/custv%(i)d.vcf;
@@ -913,15 +909,50 @@ def annotateVariantsSNPsift(infile, outfile):
                 tabnam = line[1]
                 header = line[2]
                 getcols = line[3]
-                statement = '''bgzip %(tempin)s.vcf; tabix %(tempin)s.vcf.gz;
+                statement = '''bgzip -f %(tempin)s.vcf;
+                               tabix -f %(tempin)s.vcf.gz;
                                bcftools annotate -a %(andir)s/%(tabnam)s
                                -h %(andir)s/%(header)s
                                -c %(getcols)s %(tempin)s.vcf.gz > %(tempout)s;
-                               cp %(tempout)s variants/custt%(i)d.vcf
+                               cp %(tempout)s variants/custt%(i)d.vcf;
                                mv %(tempout)s %(tempin)s.vcf'''
                 P.run()
     statement = """mv %(tempin)s.vcf %(outfile)s"""
     P.run()
+
+@follows(mkdir("variant_tables"))
+@transform(GATKIndelRealignSample, regex(r"gatk/(.*).realigned.bam"),
+           add_inputs(annotateVariantsSNPsift), r"variant_tables/\1.tsv")
+def MakeAnnotationsTables(infiles, outfile):
+    bamname = infiles[0]
+    inputvcf = infiles[1]
+    TF = P.getTempFilename(".")
+    samplename = bamname.replace(".realigned.bam",
+                                 "_sorted").replace("gatk/", "")  # XXXXXX
+    statement = '''bcftools view -h %(inputvcf)s |
+                   awk -F '=|,' '$1=="##INFO" || $1=="##FORMAT"
+                   {printf("%%s\\t%%s\\n", $3, $9)}'
+                   | sed 's/>//g' > %(TF)s'''
+    P.run()
+    cols = []
+    colds = []
+    for line in IOTools.openFile(TF).readlines():
+        if line.split("\t")[0] != "Samples":
+            cols.append("[%%%s]" % line.split("\t")[0])
+            colds.append(line.split("\t")[1].strip().replace(" ", "_"))
+    l1 = "\t".join(cols)
+    l2 = "\t".join(colds)
+    out = open(outfile, "w")
+    out.write('''CHROM\tPOS\tQUAL\tID\tFILTER\tREF\tALT\tGT\t%s\nchromosome\tposition\tquality\tfilter\tref\talt\tgenotype\t%s\n''' % (l1, l2))
+    out.close()
+    cstring = "\\t".join(cols)
+    cstring = "%CHROM\\t%POS\\t%QUAL\\t%ID\\t%FILTER\\t%REF\\t%ALT\\t[%GT]\\t" + cstring
+    statement = '''bcftools query -s %(samplename)s -f '%(cstring)s\\n'
+                   -i 'FILTER=="PASS" && GT!="0/0" && GT!="./."'
+                   %(inputvcf)s >> %(outfile)s'''
+    P.run()
+    
+
 ###############################################################################
 ###############################################################################
 ###############################################################################
