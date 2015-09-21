@@ -851,6 +851,21 @@ def annotateVariantsSNPsift(infile, outfile):
                        mv %(tempout)s %(tempin)s"""
         P.run()
 
+    if "clinvar" in SNPsift:
+        clinvar = PARAMS["annotation_clinvar"]
+        statement = """SnpSift.sh annotate %(clinvar)s
+                    %(tempin)s > %(tempout)s;
+                    mv %(tempout)s %(tempin)s"""
+
+    if "exac" in SNPsift:
+        exac = PARAMS["annotation_exac"]
+        statement = """SnpSift.sh annotate
+                    -info AC_Adj,AN_Adj,AF
+                    %(exac)s
+                    %(tempin)s > %(tempout)s;
+                    mv %(tempout)s %(tempin)s"""
+
+        
     if "gwascatalog" in SNPsift:
         gwas_catalog = PARAMS["annotation_gwas_catalog"]
         statement = """SnpSift.sh gwasCat -db %(gwas_catalog)s
