@@ -833,8 +833,7 @@ def annotateVariantsSNPsift(infile, outfile):
     tempout = P.getTempFilename(".")
     genome = PARAMS["bwa_index_dir"] + "/" + PARAMS["genome"] + ".fa"
     SNPsift = PARAMS["annotation_snpsiftannotators"].split(",")
-    VEP = PARAMS["annotation_vepannotators"].split(",")
-    custom = PARAMS["annotation_customanno"]
+
     shutil.copy(infile, tempin)
 
     # SNP Sift #
@@ -856,6 +855,7 @@ def annotateVariantsSNPsift(infile, outfile):
         statement = """SnpSift.sh annotate %(clinvar)s
                     %(tempin)s > %(tempout)s;
                     mv %(tempout)s %(tempin)s"""
+        P.run()
 
     if "exac" in SNPsift:
         exac = PARAMS["annotation_exac"]
@@ -864,8 +864,8 @@ def annotateVariantsSNPsift(infile, outfile):
                     %(exac)s
                     %(tempin)s > %(tempout)s;
                     mv %(tempout)s %(tempin)s"""
+        P.run()
 
-        
     if "gwascatalog" in SNPsift:
         gwas_catalog = PARAMS["annotation_gwas_catalog"]
         statement = """SnpSift.sh gwasCat -db %(gwas_catalog)s
@@ -881,8 +881,19 @@ def annotateVariantsSNPsift(infile, outfile):
                        %(tempout)s;
                        mv %(tempout)s %(tempin)s"""
         P.run()
+    shutil.move(tempin, outfile)
 
+@transform(annotateVariantsSNPsift,
+           regex(r"variants/all_samples.snpsift.vcf"),
+           r"variants/all_samples.vep.vcf") 
+def annotateVariantsVEP(infile, outfile):
     # VEP #
+    job_options = "-l mem_free=6G"
+    job_threads = 4
+    tempin = P.getTempFilename(".")
+    tempout = P.getTempFilename(".")
+    shutil.copy(infile, tempin)
+    VEP = PARAMS["annotation_vepannotators"].split(",")
     vep_annotators = PARAMS["annotation_vepannotators"]
     vep_path = PARAMS["annotation_veppath"]
     vep_cache = PARAMS["annotation_vepcache"]
@@ -899,8 +910,19 @@ def annotateVariantsSNPsift(infile, outfile):
                        cp %(tempout)s variants/vep.vcf;
                        mv %(tempout)s %(tempin)s'''
         P.run()
+    shutil.move(tempin, outfile)
 
+@transform(annotateVariantsVEP,
+           regex(r"variants/all_samples.vep.vcf"),
+           r"variants/all_samples.custom.vcf")
+def annotateVariantsCustom(infile, outfile):
     # Custom #
+    job_options = "-l mem_free=6G"
+    job_threads = 4
+    tempin = "%s.vcf" % (P.getTempFilename("."))
+    tempout = P.getTempFilename(".")
+    shutil.copy(infile, tempin)
+    custom = PARAMS["annotation_customanno"]
     if len(custom) != 0:
         ctable = IOTools.openFile("%s/labels.txt" % custom).readlines()
         andir = PARAMS["annotation_customanno"]
@@ -912,32 +934,31 @@ def annotateVariantsSNPsift(infile, outfile):
             if ftype == "vcf":
                 vcfnam = line[1]
                 getcols = line[3]
-                statement = '''bgzip -f %(tempin)s.vcf;
-                               tabix -f %(tempin)s.vcf.gz;
+                statement = '''bgzip -f %(tempin)s;
+                               tabix -f %(tempin)s.gz;
                                bcftools annotate -a %(andir)s/%(vcfnam)s
                                -c %(getcols)s
-                               %(tempin)s.vcf.gz > %(tempout)s;
-                               cp %(tempout)s variants/custv%(i)d.vcf;
-                               mv %(tempout)s %(tempin)s.vcf'''
+                               %(tempin)s.gz > %(tempout)s;
+                               mv %(tempout)s %(tempin)s'''
                 P.run()
-            elif ftype == "table":
+                E.info("vcf1")
+            if ftype == "table":
                 tabnam = line[1]
                 header = line[2]
                 getcols = line[3]
-                statement = '''bgzip -f %(tempin)s.vcf;
-                               tabix -f %(tempin)s.vcf.gz;
+                statement = '''bgzip -f %(tempin)s;
+                               tabix -f %(tempin)s.gz;
                                bcftools annotate -a %(andir)s/%(tabnam)s
                                -h %(andir)s/%(header)s
-                               -c %(getcols)s %(tempin)s.vcf.gz > %(tempout)s;
-                               cp %(tempout)s variants/custt%(i)d.vcf;
-                               mv %(tempout)s %(tempin)s.vcf'''
+                               -c %(getcols)s %(tempin)s.gz > %(tempout)s;
+                               mv %(tempout)s %(tempin)s'''
                 P.run()
-    statement = """mv %(tempin)s.vcf %(outfile)s"""
-    P.run()
+                E.info("vcf1")
+    shutil.move("%s.vcf" % tempin, outfile)
 
 @follows(mkdir("variant_tables"))
 @transform(GATKIndelRealignSample, regex(r"gatk/(.*).realigned.bam"),
-           add_inputs(annotateVariantsSNPsift), r"variant_tables/\1.tsv")
+           add_inputs(annotateVariantsCustom), r"variant_tables/\1.tsv")
 def MakeAnnotationsTables(infiles, outfile):
     bamname = infiles[0]
     inputvcf = infiles[1]
@@ -958,7 +979,7 @@ def MakeAnnotationsTables(infiles, outfile):
     l1 = "\t".join(cols)
     l2 = "\t".join(colds)
     out = open(outfile, "w")
-    out.write('''CHROM\tPOS\tQUAL\tID\tFILTER\tREF\tALT\tGT\t%s\nchromosome\tposition\tquality\tfilter\tref\talt\tgenotype\t%s\n''' % (l1, l2))
+    out.write('''CHROM\tPOS\tQUAL\tID\tFILTER\tREF1\tALT\tGT\t%s\nchromosome\tposition\tquality\tfilter\tref\talt\tgenotype\t%s\n''' % (l1, l2))
     out.close()
     cstring = "\\t".join(cols)
     cstring = "%CHROM\\t%POS\\t%QUAL\\t%ID\\t%FILTER\\t%REF\\t%ALT\\t[%GT]\\t" + cstring
