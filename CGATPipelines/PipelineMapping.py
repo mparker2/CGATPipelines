@@ -790,8 +790,6 @@ class Mapper(SequenceCollectionProcessor):
         If True, remove non-unique matches from the BAM file. This
         processing will happen in addition to any filters applied
         in the mapper.
-    tool_options : string
-        Options to be passed to the processing tool.
 
     '''
 
@@ -811,10 +809,8 @@ class Mapper(SequenceCollectionProcessor):
                  executable=None,
                  strip_sequence=False,
                  remove_non_unique=False,
-                 tool_options="",
                  *args, **kwargs):
         '''
-        
         '''
         SequenceCollectionProcessor.__init__(self, *args, **kwargs)
 
@@ -822,9 +818,6 @@ class Mapper(SequenceCollectionProcessor):
             self.executable = executable
         self.strip_sequence = strip_sequence
         self.remove_non_unique = remove_non_unique
-
-        # tool options to be passed on to the mapping tool
-        self.tool_options = tool_options
 
     def mapper(self, infiles, outfile):
         '''build mapping statement on infiles.
@@ -2751,7 +2744,6 @@ class Bowtie(Mapper):
 
         index_option = self.index_option
         output_option = self.output_option
-        tool_options = self.tool_options
         data_options = " ".join(data_options)
         tmpdir_fastq = self.tmpdir_fastq
 
@@ -2761,7 +2753,7 @@ class Bowtie(Mapper):
             %(executable)s --quiet
             --threads %%(bowtie_threads)i
             %(data_options)s
-            %(tool_options)s
+            %%(bowtie_options)s
             %(index_option)s %(index_prefix)s
             %(infiles)s
             %(output_option)s
@@ -2779,7 +2771,7 @@ class Bowtie(Mapper):
             %(executable)s --quiet
             --threads %%(bowtie_threads)i
             %(data_options)s
-            %(tool_options)s
+            %%(bowtie_options)s
             %(index_option)s %(index_prefix)s
             -1 %(infiles1)s -2 %(infiles2)s
             %(output_option)s

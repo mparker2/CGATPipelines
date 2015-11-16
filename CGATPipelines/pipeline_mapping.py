@@ -1447,9 +1447,9 @@ def mapReadsWithBowtie(infiles, outfile):
     job_threads = PARAMS["bowtie_threads"]
     job_memory = PARAMS["bowtie_memory"]
 
+    bowtie_options = P.substituteParameters(**locals())["bowtie_options"]
     m = PipelineMapping.Bowtie(
         executable=P.substituteParameters(**locals())["bowtie_executable"],
-        tool_options=P.substituteParameters(**locals())["bowtie_options"],
         strip_sequence=PARAMS["strip_sequence"])
     infile, reffile = infiles
     statement = m.build((infile,), outfile)
@@ -1506,9 +1506,10 @@ def mapReadsWithBowtie2(infiles, outfile):
     job_threads = PARAMS["bowtie2_threads"]
     job_memory = PARAMS["bowtie2_memory"]
 
+    bowtie_options = P.substituteParameters(**locals())["bowtie2_options"]
+
     m = PipelineMapping.Bowtie2(
         executable=P.substituteParameters(**locals())["bowtie2_executable"],
-        tool_options=P.substituteParameters(**locals())["bowtie2_options"],
         strip_sequence=PARAMS["strip_sequence"])
     infile, reffile = infiles
     statement = m.build((infile,), outfile)
