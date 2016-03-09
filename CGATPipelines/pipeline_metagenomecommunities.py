@@ -331,9 +331,13 @@ def preprocessReads(infile, outfile):
     '''
     # check for second read in the pair
     if infile.endswith(".fastq.gz"):
-        E.info("converting fastq file to fasta file")
-        statement = '''fastq-to-fasta.py %(infile)s 2> %(outfile)s.log
-                       | gzip > %(outfile)s'''
+        E.warn("Converting fastq file to fasta file assumes"
+               " the fastq is not multi-line format.")
+        statement = ("zcat %(infile)s |"
+                     " awk 'NR%4==1{printf \">%s\\n\","
+                     "              substr($0,2)}NR%4==2{print}'"
+                     " 2> %(outfile)s.log |"
+                     " gzip > %(outfile)s")
         P.run()
 
     elif infile.endswith(".1.gz"):
