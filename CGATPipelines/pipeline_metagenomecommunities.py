@@ -249,9 +249,10 @@ PARAMS = P.PARAMS
 ###################################################################
 # sequence files as input
 ###################################################################
-SEQUENCEFILES = ("*.fastq.gz", "*.fastq.1.gz", "*.fasta.gz")
+SEQUENCEFILES = ("*.fastq.gz", "*.fastq.1.gz", "*.fasta.gz",
+                 "*.fasta.1.gz")
 SEQUENCEFILES_REGEX = regex(
-    r"(\S+).(fastq.gz|fastq.1.gz|fasta.gz)")
+    r"(\S+).(fastq.gz|fastq.1.gz|fasta.gz|fasta.1.gz)")
 
 ###################################################################
 # connecting to database
@@ -279,10 +280,18 @@ def connect():
            SEQUENCEFILES_REGEX,
            r"\1.nreads")
 def countReads(infile, outfile):
-    '''count number of reads in input files.'''
+    '''count number of reads in input files.
+    This doesn't currently account for the possibility of  third fasta
+    for reads missing their mate pair.
+    '''
+    if infile.endswith('.fasta.gz') or infile.endswith('.fasta.1.gz'):
+        div = 2
+    else:
+        div = 4
+    statement = ("zcat %(infile)s |"
+                 " awk '{n+=1;} END {printf(\"nreads\\t%%i\\n\",n/%(div)s);}'"
+                 " > %(outfile)s")  
     to_cluster = True
-    m = PipelineMapping.Counter()
-    statement = m.build((infile,), outfile)
     P.run()
 
 
@@ -340,7 +349,7 @@ def preprocessReads(infile, outfile):
                      " gzip > %(outfile)s")
         P.run()
 
-    elif infile.endswith(".1.gz"):
+    elif infile.endswith("fastq.1.gz"):
         read2 = P.snip(infile, ".1.gz") + ".2.gz"
         assert os.path.exists(read2), "file does not exist %s" % read2
 
@@ -350,7 +359,31 @@ def preprocessReads(infile, outfile):
                    -b %(read2)s
                    --log=%(log)s.log
                    | gzip > %(outfile)s'''
-        P.run()
+        # JJ added possibility of file with unpaired reads
+        read3 = P.snip(infile, ".1.gz") + ".2.gz"
+        if os.path.exists(read3) and PARAMS["metaphlan_include_singletons"]:
+            statement = statement + "; cat %(read3)s > %(outfile)s"
+        
+    elif infile.endswith("fasta.1.gz"):
+        read2 = P.snip(infile, ".1.gz") + ".2.gz"
+        assert os.path.exists(read2), "file does not exist %s" % read2
+
+        log = infile.replace("fasta", "")
+        statement = ("python %(scriptsdir)s/fastas2fasta.py"
+                     "%(infile)s "
+                     "%(read2)s "
+                     " --stack"
+                     " --log=%(log)s.log |"
+                     " gzip > %(outfile)s")
+        # JJ added possibility of file with unpaired reads
+        read3 = P.snip(infile, ".1.gz") + ".2.gz"
+        if os.path.exists(read3) and PARAMS["metaphlan_include_singletons"]:
+            statement = statement + "; cat %(read3)s > %(outfile)s"
+
+    else:
+        assert infile.endswith("fasta.gz"), "unexpected infile format %s" % infile
+        statement = "cat %(infile)s > %(outfile)s"
+    P.run()
 
 ###################################################################
 ###################################################################
