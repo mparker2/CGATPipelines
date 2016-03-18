@@ -362,7 +362,7 @@ def preprocessReads(infile, outfile):
         # JJ added possibility of file with unpaired reads
         read3 = P.snip(infile, ".1.gz") + ".2.gz"
         if os.path.exists(read3) and PARAMS["metaphlan_include_singletons"]:
-            statement = statement + "; cat %(read3)s > %(outfile)s"
+            statement = statement + "; cat %(read3)s >> %(outfile)s"
         
     elif infile.endswith("fasta.1.gz"):
         read2 = P.snip(infile, ".1.gz") + ".2.gz"
@@ -376,9 +376,9 @@ def preprocessReads(infile, outfile):
                      " --log=%(log)s.log |"
                      " gzip > %(outfile)s")
         # JJ added possibility of file with unpaired reads
-        read3 = P.snip(infile, ".1.gz") + ".2.gz"
+        read3 = P.snip(infile, ".1.gz") + ".3.gz"
         if os.path.exists(read3) and PARAMS["metaphlan_include_singletons"]:
-            statement = statement + "; cat %(read3)s > %(outfile)s"
+            statement = statement + "; cat %(read3)s >> %(outfile)s"
 
     else:
         assert infile.endswith("fasta.gz"), "unexpected infile format %s" % infile
@@ -394,35 +394,40 @@ def preprocessReads(infile, outfile):
 ###################################################################
 
 
-@active_if("metaphlan" in PARAMS.get("classifiers"))
+#@active_if("metaphlan" in P.asList(PARAMS.get("classifiers")))
 @follows(mkdir("metaphlan.dir"))
-@transform(SEQUENCEFILES,
-           SEQUENCEFILES_REGEX,
+@transform(preprocessReads,
+           regex(".+/(.+).fa.gz"),
            r"metaphlan.dir/\1.bt2out.txt")
 def mapReadsWithMetaphlan(infile, outfile):
     '''
     map reads first with metaphlan against the marker
     database - will reduce running time for subsequent
     steps to assess abundances etc
-    NOTE: IF PAIRED END, FILES WILL RUN USING FIRST READ IN PAIR
+    NOTE: THIS IS NOT SET UP TO MAP PAIRED END READS SEPARATELY
     '''
-    db = PARAMS.get("metaphlan_db")
-    nproc = PARAMS.get("metaphlan_nproc")
-    options = PARAMS.get("metaphlan_bowtie2_options")
-    assert os.path.exists(
-        PARAMS["metaphlan_db"] + ".1.bt2"), \
-        """missing file %s: Are you sure you have
-           the correct database for bowtie2?""" \
+    # out file for the relative abundance estimates
+    out_relAb = outfile.replace('bt2out', 'relativeAbundance')
+    out_log = outfile.replace('bt2out.txt', 'log')
+    
+    assert os.path.exists(PARAMS["metaphlan_db"] + ".1.bt2"), \
+        "missing %s: Are you sure you have the correct database for bowtie2?" \
         % PARAMS["metaphlan_db"] + ".1.bt2"
-    statement = '''zcat %(infile)s | metaphlan.py %(infile)s
-                                     --input_type multifastq
-                                     --mpa_pkl %(metaphlan_pkl)s
-                                     --bowtie2db %(db)s
-                                     --nproc %(nproc)s
-                                     --bt2_ps %(options)s
-                                     --no_map
-                                     --bowtie2out %(outfile)s
-                                     &> %(outfile)s.log'''
+    statement = ("zcat %(infile)s |"
+                 " metaphlan2.py"
+                 "  --input_type multifasta"
+                 "  --mpa_pkl %(metaphlan_db)s.pkl"
+                 "  --bowtie2db %(metaphlan_db)s"
+                 "  --nproc %(metaphlan_nproc)s"
+                 "  --bt2_ps %(metaphlan_bowtie2_options)s"
+                 "  --min_alignment_len %(metaphlan_bowtie2_min_align_len)s"
+                 "  --bowtie2out %(outfile)s"
+                 " 2> %(out_log)s"
+                 " > %(out_relAb)s")
+
+    if PARAMS.get("metaphlan_cluster_options", ''):
+        cluster_options = PARAMS["metaphlan_cluster_options"]
+
     P.run()
 
 ###################################################################
@@ -439,13 +444,20 @@ def buildMetaphlanReadmap(infile, outfile):
     reads to clades based on specific genetic markers via
     blastn searching
     '''
-    statement = '''metaphlan.py -t reads_map
-                   --input_type bowtie2out %(infile)s
-                   | python %(scriptsdir)s/metaphlan2table.py
-                     -t read_map
-                    --log=%(outfile)s.log
-                    > %(outfile)s; checkpoint
-                    ; sed -i 's/order/_order/g' %(outfile)s'''
+    statement = ("metaphlan2.py -t reads_map"
+                 " --mpa_pkl %(metaphlan_db)s.pkl"
+                 " --input_type bowtie2out %(infile)s "
+                 " 2> %(outfile)s.log |"
+                 # JJ Metaphlan.read_map_iterator doesn't cope with variable
+                 # number of fields...
+                 " python %(scriptsdir)s/taxtable2taxtable.py"
+                 "  --tax-split=\\|"
+                 "  --out-format=table"
+                 "  --prefixes=k__,p__,c__,o__,f__,g__,s__,t__"
+                 "  --headers=SeqID,kingdom,phylum,class,_order,family,genus,species,strain"
+                 "  --empty-value=unclassified"
+                 " --log=%(outfile)s.log"
+                 " > %(outfile)s")
     P.run()
 
 ###################################################################
@@ -453,11 +465,13 @@ def buildMetaphlanReadmap(infile, outfile):
 ###################################################################
 
 
+@jobs_limit(1)
 @transform(buildMetaphlanReadmap, suffix(".readmap"), ".readmap.load")
 def loadMetaphlanReadmaps(infile, outfile):
     '''
     load the metaphlan read maps
     '''
+    to_cluster = False
     P.load(infile, outfile)
 
 ###################################################################
@@ -501,11 +515,14 @@ def buildMetaphlanRelativeAbundance(infile, outfile):
     reads to clades based on specific genetic markers via
     blastn searching
     '''
-    statement = '''metaphlan.py -t rel_ab --input_type bowtie2out %(infile)s
-                   | python %(scriptsdir)s/metaphlan2table.py -t rel_ab
-                    --log=%(outfile)s.log
-                    > %(outfile)s; checkpoint
-                    ; sed -i 's/order/_order/g' %(outfile)s'''
+    statement = ("metaphlan2.py -t rel_ab"
+                 " --mpa_pkl %(metaphlan_db)s.pkl"
+                 " --input_type bowtie2out %(infile)s"
+                 " 2> %(outfile)s.log | grep -v '#SampleID'"
+                 "| python %(scriptsdir)s/metaphlan2table.py -t rel_ab"
+                 " --log=%(outfile)s.log"
+                 " > %(outfile)s; checkpoint"
+                 "; sed -i 's/order/_order/g' %(outfile)s")
     P.run()
 
 ###################################################################
@@ -542,7 +559,8 @@ def buildMetaphlanTaxonomicAbundances(infiles, outfile):
             """SELECT taxon_level,
                       taxon,
                       rel_abundance FROM %s""" % table).fetchall():
-            idx = track.split("_")[1]
+            # JJ - cope with sample3 or sample4 name stucture 
+            idx = track.split("_")[-2]
             outf.write(
                 "\t".join([track, data[0], data[1], str(data[2]), idx]) + "\n")
     outf.close()
@@ -552,7 +570,7 @@ def buildMetaphlanTaxonomicAbundances(infiles, outfile):
 #########################################
 
 
-@active_if("metaphlan" in PARAMS.get("classifiers"))
+#@active_if("metaphlan" in PARAMS.get("classifiers"))
 @follows(loadMetaphlanRelativeAbundances,
          buildMetaphlanTaxonomicAbundances,
          countMetaphlanTaxonomicGroups,
@@ -568,10 +586,55 @@ def Metaphlan():
 ###################################################################
 ###################################################################
 
+# preprocess to concatenate read pairs for kraken.
+@follows(mkdir("fasta_kraken.dir"))
+@transform(SEQUENCEFILES, SEQUENCEFILES_REGEX, r"fasta_kraken.dir/\1.fa.gz")
+def preprocessKrakenReads(infile, outfile):
+    '''
+    create merged fasta file for use with kraken
+    '''
+    # check for second read in the pair
+    if infile.endswith(".fastq.gz"):
+        E.warn("Converting fastq file to fasta file assumes"
+               " the fastq is not multi-line format.")
+        statement = ("zcat %(infile)s |"
+                     " awk 'NR%4==1{printf \">%s\\n\","
+                     "              substr($0,2)}NR%4==2{print}'"
+                     " 2> %(outfile)s.log |"
+                     " gzip > %(outfile)s")
+        P.run()
+
+    elif infile.endswith("fastq.1.gz"):
+        read2 = P.snip(infile, ".1.gz") + ".2.gz"
+        assert os.path.exists(read2), "file does not exist %s" % read2
+        raise IOError("No one has yet added code for concatenating fastq files"
+                      " for use with kraken")
+        
+    elif infile.endswith("fasta.1.gz"):
+        read2 = P.snip(infile, ".1.gz") + ".2.gz"
+        assert os.path.exists(read2), "file does not exist %s" % read2
+
+        statement = ("python %(scriptsdir)s/fastas2fasta.py"
+                     " %(infile)s "
+                     " %(read2)s "
+                     " --insert-separator"
+                     " --log=%(outfile)s.log |"
+                     " gzip > %(outfile)s")
+        # JJ added possibility of file with unpaired reads
+        read3 = P.snip(infile, ".1.gz") + ".3.gz"
+        if os.path.exists(read3) and PARAMS["kraken_include_singletons"]:
+            statement = statement + "; cat %(read3)s >> %(outfile)s"
+
+    else:
+        assert infile.endswith("fasta.gz"), "unexpected infile format %s" % infile
+        statement = "cat %(infile)s > %(outfile)s"
+    to_cluster = False
+    P.run()
+
 
 @follows(mkdir("kraken.dir"))
-@transform(SEQUENCEFILES,
-           SEQUENCEFILES_REGEX,
+@transform(preprocessKrakenReads,
+           regex(".+/(.+).fa.gz"),
            r"kraken.dir/\1.classified.tsv.gz")
 def classifyReadsWithKraken(infile, outfile):
     '''
@@ -581,13 +644,15 @@ def classifyReadsWithKraken(infile, outfile):
     kraken_db = PARAMS.get("kraken_db")
     temp = P.getTempFilename(".")
     statement = '''kraken --db %(kraken_db)s
-                   --fastq-input
+                   --fasta-input
                    --gzip-compressed
                    %(infile)s > %(temp)s;
                    cat %(temp)s
                   | gzip > %(outfile)s'''
+    cluster_options = "-l walltime=48:00:00,mem=30Gb"
     P.run()
-
+    os.unlink(temp)
+    
 ###################################################################
 ###################################################################
 ###################################################################
@@ -624,7 +689,7 @@ def buildKrakenCounts(infile, outfile):
 ###################################################################
 ###################################################################
 
-
+@jobs_limit(10)
 @transform(buildKrakenCounts, suffix(".tsv.gz"), ".kraken.load")
 def loadKrakenCounts(infile, outfile):
     '''
@@ -674,7 +739,7 @@ def buildKrakenLevelCounts(infiles, outfiles):
 ###################################################################
 ###################################################################
 
-
+@jobs_limit(10)
 @transform(buildKrakenLevelCounts, suffix(".tsv.gz"), ".load")
 def loadKrakenLevelCounts(infile, outfile):
     '''
@@ -2044,7 +2109,7 @@ def full():
 def build_report():
     '''build report from scratch.'''
     E.info("starting documentation build process from scratch")
-    P.run_report(clean=True)
+    P.run_report(clean=True, with_pipeline_status=False)
 
 
 @follows(mkdir("report"))
