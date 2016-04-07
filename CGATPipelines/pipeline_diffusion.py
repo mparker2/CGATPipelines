@@ -10,7 +10,7 @@ Diffusion analysis pipeline
 :Tags: Python
 
 The diffusion analysis pipeline imports gene lists (eg. candidate genes from exome sequencing
-and ranks the genes according to how closely connected they are with seed gene (eg. known 
+and ranks the genes according to how closely connected they are with seed gene (eg. known
 disease genes) within a given network.  The pipeline performs the following steps:
 
 1.  Converts the gene names in the gene lists into ensembl identifiers
@@ -67,7 +67,7 @@ Three files:
 Code
 ====
 
-""" 
+"""
 
 # load modules
 from ruffus import *
@@ -77,7 +77,6 @@ import sys
 import os
 import CGAT.IOTools as IOTools
 import CGATPipelines.Pipeline as P
-sys.path.append("/ifs/devel/katherineb/network_analysis")
 import PipelineDiffusion
 import CGAT.Experiment as E
 
