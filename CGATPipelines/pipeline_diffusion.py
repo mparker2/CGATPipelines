@@ -184,8 +184,9 @@ def convertGeneNames(infiles, outfile):
         genes1, PARAMS["ensembl_ids"], e_inds_2)
 
     z = zip(symbols1, scores1, scores2)
-
-    z.sort(key=lambda t: t[2])
+    
+    z.sort(key=lambda t: (t[1]), reverse=True)
+    z.sort(key=lambda t: (t[2]))
 
     outf = open(outfile, "w")
     for row in z:
