@@ -90,45 +90,42 @@ P.getParameters(
      "../pipeline.ini", "pipeline.ini"])
 PARAMS = P.PARAMS
 
-SEEDS = "seeds.tsv"
-CANDIDATES = "candidates.dir/*.tsv"
-
 #########################################################################
 #########################################################################
-#########################################################################
-# Get unique ensembl ids for candidate gene lists
+# Get  ensembl ids for candidate gene lists
 
 
-@transform(SEEDS, suffix(".tsv"), "_clean.tsv")
+@transform('*seed.tsv', suffix(".tsv"), "_clean.tsv")
 def translateSeeds(infile, outfile):
     genes = [line.strip()
              for line in IOTools.openFile(infile).readlines()]
     seeds = PipelineDiffusion.symbol2Ensembl(
         genes, PARAMS["ensembl_ids"], PARAMS["ensembl_inds"])
-    seeds = set(seeds)
+    if PARAMS["diffusion_dedup"]:
+        # get unique seeds?
+        seeds = set(seeds)
+
     outf = IOTools.openFile(outfile, "w")
-    for seed in seeds:
-        outf.write("%s\n" % seed)
+    outf.write('\n'.join(seeds))
     outf.close()
 
-
 @follows(mkdir("clean_candidates.dir"))
-@transform(CANDIDATES, regex("candidates.dir/(.*).tsv"),
-           add_inputs(translateSeeds),
-           r"clean_candidates.dir/\1.tsv")
+@transform("candidates.dir/*.tsv", regex("candidates.dir/(.*)-target.tsv"),
+           add_inputs(r'\1-seed_clean.tsv'),
+           r"clean_candidates.dir/\1-target.tsv")
 def cleanGeneLists(infiles, outfile):
     '''Get ensembl ids for candidate gene lists'''
+    cand_file, seed_file = infiles
     genes = [line.strip()
-             for line in IOTools.openFile(infiles[0]).readlines()]
+             for line in IOTools.openFile(cand_file).readlines()]
     cands = PipelineDiffusion.symbol2Ensembl(
         genes, PARAMS["ensembl_ids"], PARAMS["ensembl_inds"],
         submit=False)
     seeds = [line.strip()
-             for line in IOTools.openFile(infiles[1]).readlines()]
+             for line in IOTools.openFile(seed_file).readlines()]
     cands = set(cands) - set(seeds)
     outf = IOTools.openFile(outfile, "w")
-    for cand in cands:
-        outf.write("%s\n" % cand)
+    outf.write('\n'.join(cands))
     outf.close()
 
 
@@ -146,9 +143,9 @@ def getMatches(infile, outfile):
 
 @follows(mkdir("diffusion.dir"))
 @follows(getMatches)
-@transform(cleanGeneLists, regex("clean_candidates.dir/(.*).tsv"),
-           add_inputs(getMatches),
-           r"diffusion.dir/\1.tsv")
+@transform(cleanGeneLists, regex("clean_candidates.dir/(.*)-target.tsv"),
+           add_inputs(r'\1-seed_matches.tsv'),
+           r"diffusion.dir/\1-target.tsv")
 def buildDiffusionNetwork(infiles, outfile):
     '''Perform diffusion analysis for each candidate gene list'''
     infile, seedfile = infiles

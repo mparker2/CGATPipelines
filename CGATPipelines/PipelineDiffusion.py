@@ -4,6 +4,22 @@ import random
 import operator
 import copy
 
+@cluster_runnable
+def bootstrap(ar, length=0):
+    '''
+    bootstrap sampling
+    returns the bootstrapped sample,
+      and the oob sample
+    It accepts both pure arrays and 
+      arrays of some structure
+    '''
+    length = length or len(ar)
+    result = []
+    oob = []
+    for i in range(length):
+        result.append(random.choice(range(len(ar))))
+    oob = list(set(range(len(ar))) - set(result))
+    return [[ar[r] for r in result], [ar[r] for r in oob]]
 
 @cluster_runnable
 def symbol2Ensembl(genelist, transfile, inds):
