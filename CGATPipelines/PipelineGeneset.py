@@ -507,7 +507,7 @@ def buildCDSFasta(infiles, outfile):
         indexed file in :term:`fasta` format with CDS sequences.
 
     '''
-    infile_cdnas, infile_peptides_fasta = infiles
+    infile_cdnas, infile_peptides_fasta, infile_transcripts = infiles
 
     dbname = outfile[:-len(".fasta")]
 
@@ -523,14 +523,16 @@ def buildCDSFasta(infiles, outfile):
 
     tmpfile = P.getTempFile(".")
 
+    transcript_table = P.toTable(infile_transcripts)
+
     dbhandle = sqlite3.connect(PARAMS["database_name"])
     cc = dbhandle.cursor()
+    statement = '''SELECT DISTINCT protein_id, transcript_id
+                   FROM %(transcript_table)s''' % locals()
+
     tmpfile.write("protein_id\ttranscript_id\n")
     tmpfile.write("\n".join(
-        ["%s\t%s" % x for x in
-         cc.execute(
-             "SELECT DISTINCT protein_id, transcript_id "
-             "FROM transcript_info")]))
+        ["%s\t%s" % x for x in cc.execute(statement)]))
     tmpfile.write("\n")
 
     tmpfile.close()

@@ -653,8 +653,12 @@ def buildContigSizes(infile, outfile):
     fasta = IndexedFasta.IndexedFasta(prefix)
     outs = IOTools.openFile(outfile, "w")
 
-    for contig, size in fasta.getContigSizes(with_synonyms=False).iteritems():
-        outs.write("%s\t%i\n" % (contig, size))
+    contig_sizes = fasta.getContigSizes(with_synonyms=False)
+    contigs = contig_sizes.keys()
+    contigs.sort()
+
+    for contig in contigs:
+        outs.write("%s\t%i\n" % (contig, contig_sizes[contig]))
 
     outs.close()
 
@@ -1387,7 +1391,8 @@ def buildCDNAFasta(infile, outfile):
 @P.add_doc(PipelineGeneset.buildCDSFasta)
 @follows(mkdir('ensembl.dir'))
 @files((buildCDSTranscripts,
-        buildPeptideFasta,),
+        buildPeptideFasta,
+        downloadTranscriptInformation,),
        PARAMS["interface_cds_fasta"])
 def buildCDSFasta(infiles, outfile):
     PipelineGeneset.buildCDSFasta(infiles, outfile)
@@ -1726,6 +1731,7 @@ def buildIntergenicRegions(infiles, outfile):
     infile, contigs = infiles
 
     statement = '''zcat %(infile)s
+    | sort -k1,1 -k2,2n
     | complementBed -i stdin -g %(contigs)s
     | gzip
     > %(outfile)s'''
