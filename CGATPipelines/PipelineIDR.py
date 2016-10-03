@@ -13,6 +13,7 @@ import random
 import CGATPipelines.Pipeline as P
 import CGAT.IOTools as IOTools
 import CGATPipelines.PipelineTracks as PipelineTracks
+from CGAT import WrapperIDR
 
 
 def splitBam(infile, outfile_stub, params):
@@ -70,10 +71,9 @@ def filterBadLibraries(infiles, bad_samples):
 
 def mergeBams(infile_list, outfile):
     infile_list = " ".join(infile_list)
-    out_stub = P.snip(outfile, ".bam")
     job_options = "-l mem_free=5G"
     statement = ("samtools merge - %(infile_list)s"
-                 " | samtools sort - %(out_stub)s"
+                 " | samtools sort - -o %(outfile)s"
                  " 2>%(outfile)s.log;"
                  " checkpoint;"
                  " samtools index %(outfile)s"
@@ -401,15 +401,14 @@ def getIDRStatement(infile1,
                     outfile,
                     overlap_ratio,
                     ranking_measure,
-                    chr_table,
-                    idr_wrapper):
+                    chr_table):
 
     # get outfile stub
     inf1 = os.path.basename(infile1).split("_VS_")[0]
     inf2 = os.path.basename(infile2).split("_VS_")[0]
     out_prefix = os.path.join(os.path.dirname(outfile),
                               inf1 + "_vs_" + inf2)
-
+    idr_wrapper = WrapperIDR.__file__
     statement = ("python %(idr_wrapper)s"
                  "  --action=run"
                  "  --output-prefix=%(out_prefix)s"
@@ -423,7 +422,7 @@ def getIDRStatement(infile1,
     return statement
 
 
-def getIDRPlotStatement(infiles, outfile, idr_wrapper):
+def getIDRPlotStatement(infiles, outfile):
     """
     Receives list of infiles, the fist of which is a sentinel, the subsequent
     files are *uri.sav files output from run-batch-consistency.r script.
@@ -433,7 +432,7 @@ def getIDRPlotStatement(infiles, outfile, idr_wrapper):
     infile_prefixes = [P.snip(x, "-uri.sav") for x in infiles[1:]]
     infile_prefixes = " ".join(infile_prefixes)
     outfile_prefix = P.snip(outfile, ".pdf")
-
+    idr_wrapper = WrapperIDR.__file__
     statement = ("python %(idr_wrapper)s"
                  "  --action=plot"
                  "  --output-prefix=%(outfile_prefix)s"
